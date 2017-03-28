@@ -1,0 +1,64 @@
+This directory contains Dyninst unit tests.  These tests are targeted
+at specific features in dyninst that HPCToolkit uses, mostly for
+hpcstruct: control-flow graphs, line map info, function symbols, etc.
+
+Building the tests
+------------------
+
+The easiest way to build the tests is with the mk-dyninst.sh script.
+First, download and build hpctoolkit-externals.  This builds the
+dyninst libraries and their prerequisites.
+
+git clone https://github.com/hpctoolkit/hpctoolkit-externals
+
+cd hpctoolkit-externals
+./configure --prefix=/path/to/install/dir
+make -j 4
+
+You can either build a full externals (no target or target 'all'), or
+build just dyninst and its prereqs (target 'symtabAPI').
+
+Second, compile the test with the mk-dyninst.sh script.  This script
+adds the include and lib directories for binutils, boost, libelf,
+libdwarf, dyninst and zlib to the compile line.
+
+./mk-dyninst.sh [options]... file.cpp /externals/install/dir
+
+1. CXX and CXXFLAGS are set in the mk-dyninst.sh script.  Put any
+extra compiler flags (eg, -fcilkplus for cilk-parse) on the command
+line first.
+
+2. Add the C++ source file(s) next.  The script uses the basename of
+the first C++ source file (.cpp, .cxx, .cc or .C suffix) as the name
+of the program.
+
+3. Put the externals's install directory (prefix) last.
+
+If the build is successful, the script writes the file 'env.sh' that
+contains shell commands to set LD_LIBRARY_PATH.
+
+cilk-parse test
+---------------
+
+This test is a proxy for hpcstruct with cilk threads.  It iterates
+through the same hierarchy of functions, loops, blocks, instructions,
+inline call sequences and line map info, and makes the same queries
+that hpcstruct would make.
+
+This program tests that we can make parallel queries to ParseAPI and
+SymtabAPI.  For now, we parse the entire binary sequentially and then
+use cilk_for to analyze the functions in parallel.
+
+Build the cilk-parse test with the '-fcilkplus' option.  Be sure the
+C++ compiler supports cilk, for example, gnu g++ 5.x or later.
+
+./mk-dyninst.sh -fcilkplus cilk-parse.cpp /externals/dir
+
+Run the test with two arguments: the binary file to analyze and
+(optionally) the number of threads.  
+
+./cilk-plus filename [num-threads]
+
+If num-threads is not specified, the program will try the
+CILK_NWORKERS environment variable.
+
