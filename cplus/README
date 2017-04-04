@@ -1,0 +1,36 @@
+This directory is for test programs for running C++ code inside
+hpcrun.  Implemented naively, C++ inside hpcrun will deadlock over the
+glibc malloc() lock or call the wrong version of some libstdc++
+function or some such.  The trick is to hide the C++ inside hpcrun so
+that it doesn't conflict with the application program.
+
+To build and run the tests
+
+1. edit Makefile for the local system, if needed
+2. run make
+3. launch the test with run.sh
+
+trace.so test
+-------------
+
+This test freely runs malloc() and free() in both the application
+program and trace.so and will deadlock over the glibc malloc() lock
+with high probability.
+
+./run.sh 2000 trace.so ./map-sum 20
+
+The trick is to hide libstdc++ and malloc() in trace.so so that it
+doesn't conflict with the application program.
+
+------------------------------------------------------------
+
+monitor.c -- a stripped-down version of libmonitor's main.c that
+   overrides __libc_start_main() and provides init and fini process
+   callback functions.
+
+realtime.c -- provides REALTIME start and stop timer functions.
+
+trace.cpp -- a proxy for hpcrun.so that freely calls malloc and free
+
+map-sum.cpp -- application program that freely calls malloc and free
+

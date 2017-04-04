@@ -1,0 +1,55 @@
+#
+#  Copyright (c) 2017, Rice University.
+#  See the file LICENSE for details.
+#
+#  Note: please don't commit gratuitous changes to things like CC and
+#  CFLAGS.  Edit the file as needed for local systems, just don't push
+#  the changes up to github.
+#
+
+CC = gcc
+CXX = g++
+
+CFLAGS = -g -O
+CXXFLAGS = -g -O -std=c++11
+
+FPIC = -fPIC
+PRELOAD_LIBS = -ldl -lrt
+
+C_OBJS =
+C_FPIC_OBJS = monitor.o realtime.o
+
+CXX_OBJS = map-sum.o
+CXX_FPIC_OBJS = trace.o
+
+SO_FILES = trace.so
+PROGS = map-sum
+
+
+.PHONY: all clean
+
+all: $(SO_FILES) $(PROGS)
+
+$(C_OBJS): %.o: %.c
+	$(CC) -c -o $@ $(CFLAGS) $<
+
+$(C_FPIC_OBJS): %.o: %.c
+	$(CC) -c -o $@ $(CFLAGS) $(FPIC) $<
+
+$(CXX_OBJS): %.o: %.cpp
+	$(CXX) -c -o $@ $(CXXFLAGS) $<
+
+$(CXX_FPIC_OBJS): %.o: %.cpp
+	$(CXX) -c -o $@ $(CXXFLAGS) $(FPIC) $<
+
+
+trace.so: monitor.o realtime.o trace.o
+	$(CXX) -o $@ -shared $^ $(PRELOAD_LIBS)
+
+map-sum: map-sum.o
+	$(CXX) -o $@ $<
+
+clean:
+	rm -f *.o *.so
+	rm -f $(SO_FILES) $(PROGS)
+
