@@ -2,6 +2,7 @@ This directory contains Dyninst unit tests.  These tests are targeted
 at specific features in dyninst that HPCToolkit uses, mostly for
 hpcstruct: control-flow graphs, line map info, function symbols, etc.
 
+------------------
 Building the tests
 ------------------
 
@@ -37,6 +38,7 @@ of the program.
 If the build is successful, the script writes the file 'env.sh' that
 contains shell commands to set LD_LIBRARY_PATH.
 
+---------------
 cilk-parse test
 ---------------
 
@@ -61,4 +63,28 @@ Run the test with two arguments: the binary file to analyze and
 
 If num-threads is not specified, the program will try the
 CILK_NWORKERS environment variable.
+
+--------------
+find-gaps test
+--------------
+
+This test tries to find gaps in the ParseAPI parsing, that is, address
+ranges that are contained within some Symtab Function but are not
+covered by the basic blocks of any ParseAPI Function and may be a code
+region.
+
+For each gap, we apply the following heuristics to help decide if this
+gap may contain code.
+
+1. size of gap -- larger is more suspicious.
+2. location of gap -- end of function is less suspicious.
+3. line map info -- if exists, this is very suspicious.
+
+Build the test as:
+
+./mk-dyninst.sh find-gaps.cpp /externals/dir
+
+Run the test as:
+
+./find-gaps filename
 
