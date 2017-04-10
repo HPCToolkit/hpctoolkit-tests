@@ -48,11 +48,15 @@
 //  ./mk-dyninst.sh  -fcilkplus  cilk-parse.cpp  externals-dir
 //
 //  Usage:
-//  ./cilk-parse  filename  [ num-threads ]
+//  ./cilk-parse  [options]...  filename  [ num-threads ]
+//
+//  Options:
+//   -I, -Iall    do not split basic blocks into instructions
+//   -Iinline     do not compute inline callsite sequences
+//   -Iline       do not compute line map info
 //
 
 #define MY_USE_CILK  1
-#define USE_INSTRUCTION_API  1
 
 #include <sys/types.h>
 #include <err.h>
@@ -98,6 +102,26 @@ typedef unsigned int uint;
 Symtab * the_symtab = NULL;
 mutex mtx;
 
+// Command-line options
+class Options {
+public:
+    const char *filename;
+    int   num_threads;
+    bool  do_instns;
+    bool  do_inline;
+    bool  do_linemap;
+
+    Options() {
+	filename = NULL;
+	num_threads = 0;
+	do_instns = true;
+	do_inline = true;
+	do_linemap = true;
+    }
+};
+
+Options opts;
+
 //----------------------------------------------------------------------
 
 // Summary info for each function.
@@ -133,19 +157,6 @@ public:
     }
 };
 
-// Command-line options.
-//
-class Options {
-public:
-    const char *filename;
-    int  num_threads;
-
-    Options() {
-	filename = NULL;
-	num_threads = 0;
-    }
-};
-
 //----------------------------------------------------------------------
 
 void
@@ -153,43 +164,56 @@ doInstruction(Offset addr, FuncInfo & finfo)
 {
     finfo.num_instns++;
 
-    // line map info
-    vector <Statement::Ptr> svec;
-    the_symtab->getSourceLines(svec, addr);
+    // line map info (optional)
+    if (opts.do_linemap) {
+	SymtabAPI::Function * sym_func = NULL;
+	Module * mod = NULL;
+	vector <Statement::Ptr> svec;
 
-    if (! svec.empty()) {
-	int line = svec[0]->getLine();
+	the_symtab->getContainingFunction(addr, sym_func);
+	if (sym_func != NULL) {
+	    mod = sym_func->getModule();
+	}
+	if (mod != NULL) {
+	    mod->getSourceLines(svec, addr);
+	}
 
-	// line = 0 means unknown
-	if (line > 0) {
-	    if (line < finfo.min_line || finfo.min_line == 0) {
-		finfo.min_line = line;
+	if (! svec.empty()) {
+	    int line = svec[0]->getLine();
+
+	    // line = 0 means unknown
+	    if (line > 0) {
+		if (line < finfo.min_line || finfo.min_line == 0) {
+		    finfo.min_line = line;
+		}
+		finfo.max_line = std::max(finfo.max_line, line);
 	    }
-	    finfo.max_line = std::max(finfo.max_line, line);
 	}
     }
 
-    // inline call sequence
-    FunctionBase *func, *parent;
-    int depth = 0;
+    // inline call sequence (optional)
+    if (opts.do_inline) {
+	FunctionBase *func, *parent;
+	int depth = 0;
 
-    if (the_symtab->getContainingInlinedFunction(addr, func) && func != NULL)
-    {
-	parent = func->getInlinedParent();
-	while (parent != NULL) {
-	    //
-	    // func is inlined iff it has a parent
-	    //
-	    InlinedFunction *ifunc = static_cast <InlinedFunction *> (func);
-	    pair <string, Offset> callsite = ifunc->getCallsite();
-
-	    depth++;
-
-	    func = parent;
+	if (the_symtab->getContainingInlinedFunction(addr, func) && func != NULL)
+	{
 	    parent = func->getInlinedParent();
+	    while (parent != NULL) {
+		//
+		// func is inlined iff it has a parent
+		//
+		InlinedFunction *ifunc = static_cast <InlinedFunction *> (func);
+		pair <string, Offset> callsite = ifunc->getCallsite();
+
+		depth++;
+
+		func = parent;
+		parent = func->getInlinedParent();
+	    }
 	}
+	finfo.max_depth = std::max(finfo.max_depth, depth);
     }
-    finfo.max_depth = std::max(finfo.max_depth, depth);
 }
 
 //----------------------------------------------------------------------
@@ -206,18 +230,16 @@ doBlock(Block * block, BlockSet & visited, FuncInfo & finfo)
     finfo.min_vma = std::min(finfo.min_vma, block->start());
     finfo.max_vma = std::max(finfo.max_vma, block->end());
 
-#if USE_INSTRUCTION_API
+    // split basic block into instructions (optional)
+    if (opts.do_instns) {
+	map <Offset, Instruction::Ptr> imap;
+	block->getInsns(imap);
 
-    // instructions in this block
-    map <Offset, Instruction::Ptr> imap;
-    block->getInsns(imap);
-
-    for (auto iit = imap.begin(); iit != imap.end(); ++iit) {
-        Offset addr = iit->first;
-
-	doInstruction(addr, finfo);
+	for (auto iit = imap.begin(); iit != imap.end(); ++iit) {
+	    Offset addr = iit->first;
+	    doInstruction(addr, finfo);
+	}
     }
-#endif
 }
 
 //----------------------------------------------------------------------
@@ -312,14 +334,20 @@ void
 usage(string mesg)
 {
     if (! mesg.empty()) {
-	cout << "error: " << mesg << "\n";
+	cout << "error: " << mesg << "\n\n";
     }
-    cout << "usage: cilk-parse filename [num-threads]\n";
+
+    cout << "usage: cilk-parse [options]... filename [num-threads]\n\n"
+	 << "options:\n"
+	 << "  -I, -Iall    do not split basic blocks into instructions\n"
+	 << "  -Iinline     do not compute inline callsite sequences\n"
+	 << "  -Iline       do not compute line map info\n"
+	 << "\n";
 
     exit(1);
 }
 
-// Command-line options: filename [num-threads]
+// Command-line: [options]... filename [num-threads]
 void
 getOptions(int argc, char **argv, Options & opts)
 {
@@ -327,11 +355,43 @@ getOptions(int argc, char **argv, Options & opts)
 	usage("");
     }
 
-    opts.filename = argv[1];
-    char *str = getenv("CILK_NWORKERS");
+    int n = 1;
+    while (n < argc) {
+	string arg(argv[n]);
 
-    if (argc >= 3) {
-	opts.num_threads = atoi(argv[2]);
+	if (arg == "-I" || arg == "-Iall") {
+	    opts.do_instns = false;
+	    n++;
+	}
+	else if (arg == "-Iinline") {
+	    opts.do_inline = false;
+	    n++;
+	}
+	else if (arg == "-Iline") {
+	    opts.do_linemap = false;
+	    n++;
+	}
+	else if (arg[0] == '-') {
+	    usage("invalid option: " + arg);
+	}
+	else {
+	    break;
+	}
+    }
+
+    // filename (required)
+    if (n < argc) {
+	opts.filename = argv[n];
+    }
+    else {
+	usage("missing file name");
+    }
+    n++;
+
+    // num threads (optional)
+    char *str = getenv("CILK_NWORKERS");
+    if (n < argc) {
+	opts.num_threads = atoi(argv[n]);
     }
     else if (str != NULL) {
 	opts.num_threads = atoi(str);
@@ -339,11 +399,6 @@ getOptions(int argc, char **argv, Options & opts)
     else {
 	opts.num_threads = DEFAULT_THREADS;
     }
-
-#if ! MY_USE_CILK
-    opts.num_threads = 1;
-#endif
-
     if (opts.num_threads <= 0) {
 	usage("bad value for num threads");
     }
@@ -354,8 +409,6 @@ getOptions(int argc, char **argv, Options & opts)
 int
 main(int argc, char **argv)
 {
-    Options opts;
-
     getOptions(argc, argv, opts);
 
 #if MY_USE_CILK
@@ -367,6 +420,8 @@ main(int argc, char **argv)
     if (ret != __CILKRTS_SET_PARAM_SUCCESS) {
 	errx(1, "__cilkrts_set_param failed: %d", ret);
     }
+#else
+    opts.num_threads = 1;
 #endif
 
     cout << "begin parsing: " << opts.filename << "\n"
@@ -376,6 +431,14 @@ main(int argc, char **argv)
 	errx(1, "Symtab::openFile failed: %s", opts.filename);
     }
     the_symtab->parseTypesNow();
+    the_symtab->parseFunctionRanges();
+
+    vector <Module *> modVec;
+    the_symtab->getAllModules(modVec);
+
+    for (auto mit = modVec.begin(); mit != modVec.end(); ++mit) {
+	(*mit)->parseLineInformation();
+    }
 
     SymtabCodeSource * code_src = new SymtabCodeSource(the_symtab);
     CodeObject * code_obj = new CodeObject(code_src);
