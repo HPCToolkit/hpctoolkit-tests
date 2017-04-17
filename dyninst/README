@@ -64,6 +64,62 @@ Run the test with two arguments: the binary file to analyze and
 If num-threads is not specified, the program will try the
 CILK_NWORKERS environment variable.
 
+-------------
+callback test
+-------------
+
+This test is a proxy for hpcstruct with full threads.  As with the
+cilk-parse test (baby threads), it iterates through the same hierarchy
+of loops, blocks and instructions and makes the same queries that
+hpcstruct would make, and does so via the newfunction_retstatus()
+callback function.
+
+This program tests two main things:
+
+1. Does CodeObject::parse() survive threads.  This includes both
+parse() running with cilk threads itself (if compiled that way),
+and making parallel queries from the newfunction callback.
+
+2. What changes on multiple callbacks.  It is possible for parse() to
+finalize a function and deliver its callback multiple times for the
+same function.  We compute the set of address ranges covered by the
+function and see if later callbacks add new blocks.
+
+Build and run this test the same way as the cilk-parse test with the
+-fcilkplus option and a compiler that supports cilk.
+
+./mk-dyninst.sh -fcilkplus callback /externals/dir
+
+Run this test with the name of the file to analyze and (optionally)
+the number of threads.
+
+./callback filename [num-threads]
+
+Note: as of April 2017, the only branch that supports running parse()
+in parallel is Bill's personal branch on follis.  Use git clone via
+ssh: protocol from the following directory on follis, but you need an
+account on follis for this.
+
+/p/paradyn/development/bill/dyninst-parallel-parsing.git
+
+Note: as of April 2017, the newfunction callback is only called with
+defensive mode turned on, and we don't want defensive mode.  Manually
+move the newfunction callback outside of the if (...) test at the
+bottom of the Parser::parse_frame() function.
+
+ void
+ Parser::parse_frame(ParseFrame & frame, bool recursive) {
+ ...
+     if (unlikely(obj().defensiveMode())) {
+        // calculate this after setting the function to PARSED, so that when
+        // we finalize the function we'll actually save the results and won't 
+        // re-finalize it
+        func->tampersStack(); 
+-       _pcb.newfunction_retstatus( func );
+     }
++    _pcb.newfunction_retstatus( func );
+ }
+
 --------------
 find-gaps test
 --------------
