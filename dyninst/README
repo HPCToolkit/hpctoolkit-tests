@@ -8,16 +8,29 @@ Building the tests
 
 The easiest way to build the tests is with the mk-dyninst.sh script.
 First, download and build hpctoolkit-externals.  This builds the
-dyninst libraries and their prerequisites.
+dyninst libraries and their prerequisites.  You will likely want to
+use an alternate version of dyninst than the default from externals.
+
+git clone https://github.com/dyninst/dyninst
+git checkout ....
 
 git clone https://github.com/hpctoolkit/hpctoolkit-externals
-
 cd hpctoolkit-externals
-./configure --prefix=/path/to/install/dir
+
+./configure  \
+    --prefix=/path/to/install/dir  \
+    --with-dyninst-src=/path/to/dyninst/src/dir
 make -j 4
 
 You can either build a full externals (no target or target 'all'), or
 build just dyninst and its prereqs (target 'symtabAPI').
+
+Depending on the version of dyninst, you may need to manually adjust
+(or remove) externals's patches.  In particular, patch-jump-table is
+already applied to some dyninst branches.
+
+cd hpctoolkit-externals/symtabAPI/patches
+rm patch-jump-table
 
 Second, compile the test with the mk-dyninst.sh script.  This script
 adds the include and lib directories for binutils, boost, libelf,
@@ -103,9 +116,12 @@ account on follis for this.
 /p/paradyn/development/bill/dyninst-parallel-parsing.git
 
 Note: as of April 2017, the newfunction callback is only called with
-defensive mode turned on, and we don't want defensive mode.  Manually
-move the newfunction callback outside of the if (...) test at the
-bottom of the Parser::parse_frame() function.
+defensive mode turned on, and we don't want defensive mode.  In the
+Parser.C file, manually move the newfunction callback outside of the
+if (...) test at the bottom of the Parser::parse_frame() function.
+
+cd dyninst/parseAPI/src
+vi Parser.C
 
  void
  Parser::parse_frame(ParseFrame & frame, bool recursive) {
