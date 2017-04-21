@@ -150,7 +150,9 @@ gap may contain code.
 
 1. size of gap -- larger is more suspicious.
 2. location of gap -- end of function is less suspicious.
-3. line map info -- if exists, this is very suspicious.
+3. is gap in PLT region -- if yes, this is less suspicious.
+4. out edges from block before gap -- sink is suspicious.
+5. line map info -- if exists, this is very suspicious.
 
 Build the test as:
 

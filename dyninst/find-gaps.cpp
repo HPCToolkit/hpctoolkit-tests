@@ -45,7 +45,9 @@
 //
 //  1. size of gap -- larger is more suspicious.
 //  2. location of gap -- end of function is less suspicious.
-//  3. line map info -- if exists, this is very suspicious.
+//  3. is gap in PLT region -- if yes, this is less suspicious.
+//  4. out edges from block before gap -- sink is suspicious.
+//  5. line map info -- if exists, this is very suspicious.
 //
 //  Build me as:
 //  ./mk-dyninst.sh  find-gaps.cpp  externals-dir
@@ -60,9 +62,7 @@
 // ----------------------------------------------------------------------
 //
 //  Todo:
-//  1. Print the type of the last instruction before a gap.
-//
-//  2. Identify if a gap is inside the PLT section.
+//  3. Could replace global range set with Func Extent.
 //
 
 #include <err.h>
@@ -73,6 +73,7 @@
 #include <algorithm>
 #include <iostream>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -109,6 +110,11 @@ Symtab * the_symtab = NULL;
 SymbolMap symbolMap;
 FuncMap   funcMap;
 GapVector gapVec;
+
+VMA plt_start = 0;
+VMA plt_end = 0;
+
+map <int, string> typeName;
 
 //----------------------------------------------------------------------
 
@@ -167,11 +173,13 @@ public:
     VMA  start;
     VMA  end;
     SymbolInfo * sinfo;
+    Block * prev;
 
     GapInfo(VMA st, VMA en, SymbolInfo * si) {
 	start = st;
 	end = en;
 	sinfo = si;
+	prev = NULL;
     }
 };
 
@@ -187,11 +195,15 @@ public:
     }
 };
 
-// High to low by size of gap.
+// Order is by size of gap (higher first), and resolve ties by start
+// address (lower first).
 bool
 gapOrder(GapInfo * x, GapInfo * y)
 {
-    return (x->end - x->start) > (y->end - y->start);
+    VMA size_x = x->end - x->start;
+    VMA size_y = y->end - y->start;
+
+    return (size_x > size_y) || (size_x == size_y && x->start < y->start);
 }
 
 //----------------------------------------------------------------------
@@ -271,7 +283,6 @@ addRange(RangeSet & rset, Range range)
 //----------------------------------------------------------------------
 
 // A Region is an ELF section that contains text (code).
-//
 void
 printRegions()
 {
@@ -295,10 +306,22 @@ printRegions()
     }
 }
 
+// Find the PLT region, if there is one.
+void
+getPLTRegion()
+{
+    Region * reg;
+    the_symtab->findRegion(reg, ".plt");
+
+    if (reg != NULL) {
+	plt_start = reg->getMemOffset();
+	plt_end = plt_start + reg->getMemSize();
+    }
+}
+
 //----------------------------------------------------------------------
 
 // A Module is one Compilation Unit (CU), one source file.
-//
 void
 printModules()
 {
@@ -475,7 +498,7 @@ findNextGap(RangeSet & rset, VMA start, VMA end, VMA & gap_start, VMA & gap_end)
 
 // Locate all gaps and sort by size.
 void
-findGaps()
+findGaps(CodeObject * code_obj)
 {
     gapVec.clear();
 
@@ -502,6 +525,34 @@ findGaps()
 	    if (findNextGap(global, start, end, gap_start, gap_end)) {
 		GapInfo * gap = new GapInfo(gap_start, gap_end, sinfo);
 
+		// find the basic block immediately before gap_start
+		// and save in gap info
+		VMA start_1 = gap_start - 1;
+		Range rng;
+
+		auto git = global.upper_bound(start_1);
+		if (git != global.begin()) {
+		    --git;
+		    if (git != global.end()) {
+			rng = git->second;
+		    }
+		}
+
+		if (rng.start <= start_1 && start_1 < rng.end) {
+		    CodeRegion * region = rng.finfo->func->region();
+		    set <Block *> bset;
+
+		    code_obj->findBlocks(region, start_1, bset);
+
+		    if (! bset.empty()) {
+			Block * blk = *(bset.begin());
+
+			if (blk->start() <= start_1 && start_1 < blk->end()) {
+			    gap->prev = blk;
+			}
+		    }
+		}
+
 		gapVec.push_back(gap);
 		start = gap_end;
 	    }
@@ -516,53 +567,135 @@ findGaps()
 
 //----------------------------------------------------------------------
 
+// Fill in edge type names.
+void
+initTypeNames()
+{
+    typeName[CALL] = "call";
+    typeName[COND_TAKEN] = "cond-branch";
+    typeName[COND_NOT_TAKEN] = "cond-branch";
+    typeName[INDIRECT] = "indirect-branch";
+    typeName[DIRECT] = "branch";
+    typeName[FALLTHROUGH] = "fallthrough";
+    typeName[CALL_FT] = "fallthrough";
+    typeName[CATCH] = "catch";
+    typeName[RET] = "return";
+}
+
+// Returns: label for edge type: call, cond, sink, etc.
+string
+edgeType(Edge * edge)
+{
+    if (edge == NULL) {
+	return "null";
+    }
+
+    if (edge->sinkEdge()) {
+	return "sink";
+    }
+
+    // call to no-return function is special
+    if (edge->type() == CALL) {
+	Block * targ = edge->trg();
+	vector <ParseAPI::Function *> flist;
+	targ->getFuncs(flist);
+
+	if (! flist.empty() && (*(flist.begin()))->retstatus() == NORETURN) {
+	    return "call-noreturn";
+	}
+    }
+
+    auto it = typeName.find(edge->type());
+    if (it != typeName.end()) {
+	return it->second;
+    }
+
+    return "unknown";
+}
+
+//----------------------------------------------------------------------
+
 // Analyze each gap for heuristic features to guess if it is a missing
 // code range.
 //
 //  1. size of gap -- larger is more suspicious.
 //  2. location of gap -- end of function is less suspicious.
-//  3. line map info -- if exists, this is very suspicious.
+//  3. is gap in PLT region -- if yes, this is less suspicious.
+//  4. out edges from block before gap -- sink is suspicious.
+//  5. line map info -- if exists, this is very suspicious.
 //
 void
 analyzeGap(GapInfo * ginfo)
 {
     SymbolInfo * sinfo = ginfo->sinfo;
     Module * module = sinfo->module;
+    VMA start = ginfo->start;
+    VMA end = ginfo->end;
 
-    cout << "\ngap:   0x" << hex << ginfo->start
-	 << "--0x" << ginfo->end << dec << "\n"
-	 << "name:  " << sinfo->linkName << "\n";
+    // 1 -- size of gap, larger is more suspicious
+    cout << "\ngap:       0x" << hex << start << "--0x" << end << dec
+	 << "  (len: " << (end - start) << ")\n"
+	 << "name:      " << sinfo->linkName << "\n";
 
-    // size of gap, larger is more suspicious
-    long size = (long) (ginfo->end - ginfo->start);
-    cout << "size:      " << size << "\n";
-
-    // location of gap within the symbol range, the end is less
-    // suspicious
+    // 2 -- location of gap within the symbol range, at the end is
+    // less suspicious
     string loc;
-    if (ginfo->start <= sinfo->start && sinfo->end <= ginfo->end) {
+    if (start <= sinfo->start && sinfo->end <= end) {
 	loc = "entire function";
     }
-    else if (ginfo->start <= sinfo->start) {
+    else if (start <= sinfo->start) {
 	loc = "start";
     }
-    else if (sinfo->end <= ginfo->end) {
+    else if (sinfo->end <= end) {
 	loc = "end";
     }
     else {
 	loc = "middle";
     }
-    cout << "location:  " << loc << "\n";
+    cout << "location:  " << loc;
 
-    // line map info.  if exists, this is very suspicious.
+    // 3 -- is gap inside PLT region
+    if (plt_start <= start && start < plt_end) {
+	cout << "  (plt)";
+    }
+    cout << "\n";
+
+    // 4 -- types of outgoing edges from previous block
+    Block * prev = ginfo->prev;
+    VMA start_1 = start - 1;
+
+    cout << "prev blk:  ";
+    if (prev == NULL
+	|| ! (prev->start() <= start_1 && start_1 < prev->end()))
+    {
+	cout << "no block";
+    }
+    else {
+	const Block::edgelist & elist = prev->targets();
+
+	if (elist.empty()) {
+	    cout << "no outedges";
+	}
+	else {
+	    for (auto eit = elist.begin(); eit != elist.end(); ++eit) {
+		if (eit != elist.begin()) {
+		    cout << ",  ";
+		}
+		cout << edgeType(*eit);
+	    }
+	}
+    }
+    cout << "\n";
+
+    // 5 -- line map info.  if exists, this is very suspicious.
     // try every 4 or 1 byes in gap
     string file;
     int line = 0;
-    int inc = (size > 95) ? 4 : 1;
+    int inc = (end - start > 95) ? 4 : 1;
     int num = 0;
     int num_yes = 0;
 
-    for (VMA addr = ginfo->start; addr < ginfo->end; addr += inc) {
+    for (VMA addr = start; addr < end; addr += inc) {
 	vector <Statement *> svec;
 	module->getSourceLines(svec, addr);
 
@@ -576,7 +709,7 @@ analyzeGap(GapInfo * ginfo)
 	}
     }
     cout << "line map:  " << ((num_yes > 0) ? "yes" : "no")
-	 << "   (" << num_yes << " of " << num << ")\n";
+	 << "  (" << num_yes << " of " << num << ")\n";
 
     if (line > 0) {
 	cout << "file:      " << file << "\n"
@@ -665,6 +798,8 @@ main(int argc, char **argv)
         errx(1, "Symtab::openFile failed: %s", opts.filename);
     }
 
+    initTypeNames();
+
     // SymtabAPI Function symbols
     the_symtab->parseTypesNow();
     the_symtab->parseFunctionRanges();
@@ -677,6 +812,7 @@ main(int argc, char **argv)
     }
 
     readSymbols();
+    getPLTRegion();
 
     if (opts.debug) {
 	printRegions();
@@ -696,7 +832,7 @@ main(int argc, char **argv)
     }
 
     // analyze both sets of ranges for gaps
-    findGaps();
+    findGaps(code_obj);
     printGaps(opts.debug);
 
     return 0;
