@@ -583,8 +583,12 @@ initTypeNames()
 }
 
 // Returns: label for edge type: call, cond, sink, etc.
+//
+// If the edge is call to no-return function, then set noRetName to
+// the function name.
+//
 string
-edgeType(Edge * edge)
+edgeType(Edge * edge, string & noRetName)
 {
     if (edge == NULL) {
 	return "null";
@@ -600,8 +604,13 @@ edgeType(Edge * edge)
 	vector <ParseAPI::Function *> flist;
 	targ->getFuncs(flist);
 
-	if (! flist.empty() && (*(flist.begin()))->retstatus() == NORETURN) {
-	    return "call-noreturn";
+	if (! flist.empty()) {
+	    ParseAPI::Function * func = *(flist.begin());
+
+	    if (func->retstatus() == NORETURN) {
+		noRetName = func->name();
+		return "call-noreturn";
+	    }
 	}
     }
 
@@ -663,6 +672,7 @@ analyzeGap(GapInfo * ginfo)
     // 4 -- types of outgoing edges from previous block
     Block * prev = ginfo->prev;
     VMA start_1 = start - 1;
+    string noRetName("");
 
     cout << "prev blk:  ";
     if (prev == NULL
@@ -681,11 +691,16 @@ analyzeGap(GapInfo * ginfo)
 		if (eit != elist.begin()) {
 		    cout << ",  ";
 		}
-		cout << edgeType(*eit);
+		cout << edgeType(*eit, noRetName);
 	    }
 	}
     }
     cout << "\n";
+
+    // name of no-return function, if any
+    if (noRetName != "") {
+	cout << "no-ret:    " << noRetName << "\n";
+    }
 
     // 5 -- line map info.  if exists, this is very suspicious.
     // try every 4 or 1 byes in gap
