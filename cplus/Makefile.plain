@@ -6,6 +6,8 @@
 #  CFLAGS.  Edit the file as needed for local systems, just don't push
 #  the changes up to github.
 #
+#  Now superseded by automake and libtool.
+#
 
 CC = gcc
 CXX = g++

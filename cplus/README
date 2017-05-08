@@ -4,11 +4,16 @@ glibc malloc() lock or call the wrong version of some libstdc++
 function or some such.  The trick is to hide the C++ inside hpcrun so
 that it doesn't conflict with the application program.
 
-To build and run the tests
+To build and run the tests, now use standard configure, make, make
+install.
 
-1. edit Makefile for the local system, if needed
-2. run make
-3. launch the test with run.sh
+./configure --prefix=/path/to/install/dir
+make
+make install
+
+The C++ code uses C++11 features.  Configure will try to auto-detect a
+flag for this, or else you can one to CXXFLAGS.  Other than that, the
+only argument that configure needs is --prefix.
 
 trace.so test
 -------------
@@ -17,7 +22,7 @@ This test freely runs malloc() and free() in both the application
 program and trace.so and will deadlock over the glibc malloc() lock
 with high probability.
 
-./run.sh 2000 trace.so ./map-sum 20
+./run.sh 2000 libtrace.so ./map-sum 20
 
 The trick is to hide libstdc++ and malloc() in trace.so so that it
 doesn't conflict with the application program.
