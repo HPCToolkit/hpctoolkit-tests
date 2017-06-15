@@ -12,11 +12,12 @@ MINIFE_MATRIX_TYPE = -DMINIFE_CSR_MATRIX
 
 #-----------------------------------------------------------------------
 
-# GNU CFLAGS = -O3 -fopenmp
+#GNU
+CFLAGS = -O3 -fopenmp
 
 # BG/Q
 #CFLAGS = -DIBM_HPM -qlist -qsource  -g -O3 -qsmp=omp
-CFLAGS = -qlist -qsource  -g -O3 -qsmp=omp
+#CFLAGS = -qlist -qsource  -g -O3 -qsmp=omp
 CXXFLAGS = $(CFLAGS)
 
 # To enable memory high water mark reporting uncomment the
@@ -28,12 +29,13 @@ CPPFLAGS = -I. -I../utils -I../fem $(MINIFE_TYPES) \
 LDFLAGS=$(CFLAGS)
 LIBS=
 
-# GNU CXX=mpicxx
-# GNU CC=mpicc
+# GNU
+CXX=mpicxx
+CC=mpicc
 
 # BG/Q
-CXX=mpixlcxx_r
-CC=mpixlc_r
+# CXX=mpixlcxx_r
+# CC=mpixlc_r
 
 
 include make_targets
