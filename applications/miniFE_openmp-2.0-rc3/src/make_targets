@@ -17,15 +17,15 @@ MINIFE_KERNELS = 0
 
 vpath %.cpp ../utils
 
-all:common_files generate_info miniFE.x
+all:common_files miniFE.x
 
-miniFE.x:common_files $(MAIN_OBJ) $(OBJS) $(UTIL_OBJS) $(OPTIONAL_OBJS) *.hpp generate_info
+miniFE.x:miniFE_info.hpp common_files $(MAIN_OBJ) $(OBJS) $(UTIL_OBJS) $(OPTIONAL_OBJS) *.hpp
 	$(INSTRUMENT) $(CXX) $(CXXFLAGS) $(CPPFLAGS) $(MAIN_OBJ) $(OBJS) $(UTIL_OBJS) $(OPTIONAL_OBJS) -o miniFE.x $(LDFLAGS) $(OPTIONAL_LIBS) $(LIBS)
 
 common_files:
 	./get_common_files
 
-generate_info:
+miniFE_info.hpp:
 	./generate_info_header "$(CXX)" "$(CXXFLAGS)" "miniFE" "MINIFE"
 
 verify:all
