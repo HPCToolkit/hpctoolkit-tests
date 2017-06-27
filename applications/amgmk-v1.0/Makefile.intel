@@ -1,0 +1,54 @@
+#BHEADER****************************************************************
+# (c) 2007   The Regents of the University of California               *
+#                                                                      *
+# See the file COPYRIGHT_and_DISCLAIMER for a complete copyright       *
+# notice and disclaimer.                                               *
+#                                                                      *
+#EHEADER****************************************************************
+CC       = icc
+LDR      = icc
+
+OFLAGS=-O3 -fopenmp -g
+
+CFLAGS   = -c $(OFLAGS)
+
+LDFLAGS  = $(OFLAGS) 
+
+OMPDIR=/home/johnmc/pkgs/llvm-openmp-gcc-6.3/lib
+OMPLIB=-Wl,-rpath,$(OMPDIR) -L$(OMPDIR) -lomp
+
+LIBS     = -lm $(OMPLIB)
+LIB_DIRS = 
+
+PROG     = AMGMk
+
+OBJS     = main.o \
+           csr_matrix.o   csr_matvec.o  \
+           laplace.o relax.o \
+           hypre_error.o hypre_memory.o \
+           vector.o
+
+all : $(PROG)
+
+$(PROG) : $(OBJS)
+	$(LDR)  $(LDFLAGS) -o $(PROG) $(OBJS) $(LIB_DIRS) $(LIBS)
+
+
+clean :
+	rm -f *.o $(PROG) core job.out *~ 
+
+
+.SUFFIXES : .o  .c
+
+#*****************************************************************
+#* Rules for C object file dependencies
+#*****************************************************************
+.c.o :
+	$(CC) $(CFLAGS) $*.c 
+
+
+
+
+
+
+
