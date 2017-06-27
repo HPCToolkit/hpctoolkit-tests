@@ -13,7 +13,7 @@ endif
 ifdef mpi
 CC       = mpicc
 else
-CC       = icc
+CC       = gcc
 endif
 
 LDR      = $(CC)

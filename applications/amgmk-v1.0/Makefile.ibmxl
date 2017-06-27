@@ -6,19 +6,15 @@
 #                                                                      *
 #EHEADER****************************************************************
 
-ifdef llomp
-LLVM_OMP = -Wl,-rpath=$(llomp) -L $(llomp) -lomp
-endif
-
 ifdef mpi
 CC       = mpicc
 else
-CC       = icc
+CC       = xlc
 endif
 
 LDR      = $(CC)
 
-OFLAGS   = -g -O3 -fopenmp
+OFLAGS   = -g -O3 -qhot -qsmp=omp -qlanglvl=extc99 -qsimd=auto -qhot=novector -qalias=allp 
 
 CFLAGS   = -c $(OFLAGS)
 
