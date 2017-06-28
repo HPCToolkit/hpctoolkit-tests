@@ -1,5 +1,15 @@
 unknown:
-	echo only a 'veryclean' target is supported by this makefile
+	@echo Makefile supports the following targets 
+	@echo "    clean-build"
+	@echo "    clean-run"
+	@echo "    veryclean"
 
-veryclean:
-	/bin/rm -rf hpctoolkit-* AMGMk-*.hpcstruct AMGMk-* *.o
+veryclean: clean-build clean-run
+
+clean-build:
+	/bin/rm -rf AMGMk-* *.o
+
+clean-run:
+	/bin/rm -rf hpctoolkit-* AMGMk-*.hpcstruct 
+
+
