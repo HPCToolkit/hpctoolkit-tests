@@ -8,6 +8,7 @@
 
 ifdef mpi
 CC       = mpicc
+MPIL     = -mpi
 else
 CC       = xlc
 endif
@@ -23,7 +24,7 @@ LDFLAGS  = $(OFLAGS)
 LIBS     = $(LLVM_OMP)
 LIB_DIRS = 
 
-PROG     = AMGMk
+PROG     = AMGMk-xlc$(MPIL)
 
 OBJS     = main.o \
            csr_matrix.o   csr_matvec.o  \

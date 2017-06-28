@@ -6,16 +6,18 @@
 #                                                                      *
 #EHEADER****************************************************************
 CC       = pathcc
-LDR      = pathcc
+LDR      = $(CC)
 
-CFLAGS   = -c -mp -Ofast -march=opteron  
+OFLAGS   = -mp -Ofast -march=opteron  
 
-LDFLAGS  = -lm -mp  -Ofast -march=opteron
+CFLAGS   = -c $(OFLAGS)
 
-LIBS     = 
+LDFLAGS  = $(OFLAGS) 
+
+LIBS     = -lm
 LIB_DIRS = 
 
-PROG     = AMGMk
+PROG     = AMGMk-pathcc
 
 OBJS     = main.o \
            csr_matrix.o   csr_matvec.o  \

@@ -12,6 +12,7 @@ endif
 
 ifdef mpi
 CC       = mpicc
+MPIL     = -mpi
 else
 CC       = gcc
 endif
@@ -27,7 +28,7 @@ LDFLAGS  = $(OFLAGS)
 LIBS     = $(LLVM_OMP)
 LIB_DIRS = 
 
-PROG     = AMGMk
+PROG     = AMGMk-gcc$(MPIL)
 
 OBJS     = main.o \
            csr_matrix.o   csr_matvec.o  \

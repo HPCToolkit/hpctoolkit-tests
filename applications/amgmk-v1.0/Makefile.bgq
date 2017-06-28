@@ -5,8 +5,8 @@
 # notice and disclaimer.                                               *
 #                                                                      *
 #EHEADER****************************************************************
-CC       = /bgsys/drivers/ppcfloor/comm/xl/bin/mpixlc_r
-LDR      = /bgsys/drivers/ppcfloor/comm/xl/bin/mpixlc_r
+CC       = mpixlc_r
+LDR      = $(CC)
 
 FLOOR    = /bgsys/drivers/ppcfloor
 
@@ -19,7 +19,7 @@ LDFLAGS  = -lm -qsmp=omp -pg
 LIBS     = 
 LIB_DIRS =  -L$(FLOOR)/spi/lib -lSPI_l1p -lSPI_cnk  -L/usr/local/tools/mpitrace/lib -lmpihpm -L/bgsys/drivers/ppcfloor/bgpm/lib -lbgpm -lmassv -lmass_simd
 
-PROG     = AMGMk
+PROG     = AMGMk-bgq
 
 OBJS     = main.o \
            csr_matrix.o   csr_matvec.o  \

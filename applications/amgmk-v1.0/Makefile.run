@@ -1,0 +1,10 @@
+ifndef VARIANT
+fail:
+	echo usage: make -f Makefile.run VARIANT=xx
+endif
+
+run:
+	hpcrun -e REALTIME@5000 -t ./AMGMk-$(VARIANT)
+	hpcstruct AMGMk-$(VARIANT)
+	hpcprof -S AMGMk-$(VARIANT).hpcstruct \
+		hpctoolkit-AMGMk-$(VARIANT)-measurements
