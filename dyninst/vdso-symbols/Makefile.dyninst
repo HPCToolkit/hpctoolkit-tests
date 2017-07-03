@@ -1,0 +1,24 @@
+ifndef BOOST_ROOT
+boost_error:
+	@echo usage: make -f Makefile.dyninst BOOST_ROOT=... SYMTAB_ROOT=... TARGET=...
+endif
+
+ifndef SYMTAB_ROOT
+symtab_error:
+	@echo usage: make -f Makefile.dyninst BOOST_ROOT=... SYMTAB_ROOT=... TARGET=...
+endif
+
+BOOST_INCLUDE=-I$(BOOST_ROOT)/include 
+
+SYMTAB_INCLUDE=-I$(SYMTAB_ROOT)/include 
+SYMTAB_LIB=-L$(SYMTAB_ROOT)/lib -Wl,-rpath,$(SYMTAB_ROOT)/lib -lsymtabAPI 
+
+INCLUDES= \
+	$(BOOST_INCLUDE) \
+	$(SYMTAB_INCLUDE)
+
+LIBS= \
+	$(SYMTAB_LIB)
+
+$(TARGET): symbols.cpp
+	g++ -g -std=c++11 $(INCLUDES) -o $@ $< $(LIBS)

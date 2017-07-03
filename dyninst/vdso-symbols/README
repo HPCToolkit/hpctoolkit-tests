@@ -1,0 +1,2 @@
+This test uses symtabAPI to list function symbols in examples of shared 
+libraries that are examples of x86-64 Linux VDSO segments. 
