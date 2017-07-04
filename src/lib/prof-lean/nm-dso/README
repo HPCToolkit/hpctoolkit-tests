@@ -2,7 +2,7 @@ This test exercises functionality in
   lib/prof-lean/dso_symbol.c  
   lib/prof-lean/vdso.c  
   lib/prof-lean/procmaps.c  
-to scrape symbols out of a dynamic shared library or [vdo]. 
+to scrape symbols out of a dynamic shared library or [vdso]. 
 
 usage:
   nm-dso [load-module]
