@@ -33,10 +33,6 @@ PL_LIB=$(HPCT_INSTALL)/lib/hpctoolkit/libhpcrun.a
 EU_INCLUDE=-I$(EU_ROOT)
 EU_LIB=-L$(EU_ROOT)/lib -Wl,-rpath,$(EU_ROOT)/lib -lelf 
 
-# EU_ROOT=/home/johnmc/pkgs-src/elfutils/libelf
-# EU_INCLUDE=-I$(EU_ROOT)
-# EU_LIB=-L$(EU_ROOT) -Wl,-rpath,$(EU_ROOT) -lelf 
-
 
 INCLUDES= \
 	$(PL_INCLUDE) \
