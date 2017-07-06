@@ -35,6 +35,6 @@ $(TARGET): main.c $(OBJS)
 
 
 clean:
-	/bin/rm -f $(TARGET) *.o
+	/bin/rm -f $(TARGET) *.o maps-* "[vdso]"-*
 
 

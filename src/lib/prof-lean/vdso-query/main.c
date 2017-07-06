@@ -49,6 +49,7 @@
 
 #include <stdio.h>
 #include <unistd.h>
+#include <string.h>
 
 
 
@@ -64,7 +65,8 @@
 // macros
 //******************************************************************************
 
-#define MAX_HOSTNAME_LEN 1024
+#define BUFSIZE 1024
+#define LONGNAME 2048
 
 
 
@@ -72,26 +74,65 @@
 // private functions
 //******************************************************************************
 
+char *myhostname = 0;
+
+char *
+hostname()
+{
+  if (!myhostname) {
+    char hostname[BUFSIZE];
+    gethostname(hostname, BUFSIZE);
+    myhostname = strdup(hostname);
+  }
+  return myhostname;
+}
+
+char *
+getfilename(char *prefix)
+{
+   static char filename[LONGNAME];
+   char *host = hostname();
+   sprintf(filename, "%s-%s", prefix, host);
+   return filename;
+}
+
+void
+copymaps()
+{
+	FILE *maps = fopen("/proc/self/maps", "r");
+	char *filename = getfilename("maps");
+	FILE *mymaps = fopen(filename, "w");
+	int count;
+	do {
+		char buffer[BUFSIZE];
+		count = fread(buffer, 1, BUFSIZE, maps); 
+		if (count == 0) break;
+		fwrite(buffer, 1, count, mymaps);
+	} while(count == BUFSIZE);
+	fclose(mymaps);
+}
+
+void
+copyvdso()
+{
+	void *vdso_addr = vdso_segment_addr();
+	if (vdso_addr) {
+		size_t vdso_len = vdso_segment_len();
+
+		char *filename = getfilename(VDSO_SEGMENT_NAME_SHORT);
+		FILE *myfile = fopen(filename, "w");
+		fwrite(vdso_addr, vdso_len, 1, myfile);
+		fclose(myfile);
+	}
+}
+
 
 int 
 main
 (
 )
 {
-	void *vdso_addr = vdso_segment_addr();
-	if (vdso_addr) {
-		size_t vdso_len = vdso_segment_len();
-
-		char hostname[MAX_HOSTNAME_LEN];
-		gethostname(hostname, MAX_HOSTNAME_LEN);
-		
-		char filename[MAX_HOSTNAME_LEN + 10];
-		sprintf(filename, "%s-%s", VDSO_SEGMENT_NAME_SHORT, hostname);
-
-		FILE *myfile = fopen(filename, "w");
-		char module_name[1024];
-		fwrite(vdso_addr, vdso_len, 1, myfile);
-		fclose(myfile);
-	}
+	copymaps();
+ 	copyvdso();
 	return 0;
 }
