@@ -1,0 +1,8 @@
+00400000-00804000 r-xp 00000000 00:06 63125                              /var/opt/cray/alps/spool/3396926/vdso-query
+00a04000-00a0c000 rwxp 00404000 00:06 63125                              /var/opt/cray/alps/spool/3396926/vdso-query
+00a0c000-00a77000 rwxp 00000000 00:00 0                                  [heap]
+2aaaaaaab000-2aaaaaaac000 r-xp 00000000 00:00 0                          [vdso]
+2aaaaaaac000-2aaaaaab8000 rwxs 00000000 00:02 410181                     /dev/zero (deleted)
+2aaaaaab8000-2aaaaaab9000 rwxp 00000000 00:00 0 
+7ffffffd7000-7ffffffff000 rwxp 00000000 00:00 0                          [stack]
+ffffffffff600000-ffffffffff601000 r-xp 00000000 00:00 0                  [vsyscall]
