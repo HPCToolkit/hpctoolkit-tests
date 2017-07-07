@@ -1,0 +1,39 @@
+00400000-00402000 r-xp 00000000 00:24 57273247                           /gpfs/mira-home/johnmc/pkgs-src/hpctoolkit-tests/src/lib/prof-lean/vdso-query/vdso-query
+00601000-00602000 r--p 00001000 00:24 57273247                           /gpfs/mira-home/johnmc/pkgs-src/hpctoolkit-tests/src/lib/prof-lean/vdso-query/vdso-query
+00602000-00603000 rw-p 00002000 00:24 57273247                           /gpfs/mira-home/johnmc/pkgs-src/hpctoolkit-tests/src/lib/prof-lean/vdso-query/vdso-query
+00bfa000-00c2c000 rw-p 00000000 00:00 0                                  [heap]
+7f904aa7a000-7f904aa90000 r-xp 00000000 08:02 1569933                    /lib64/libgcc_s.so.1
+7f904aa90000-7f904ac8f000 ---p 00016000 08:02 1569933                    /lib64/libgcc_s.so.1
+7f904ac8f000-7f904ac90000 r--p 00015000 08:02 1569933                    /lib64/libgcc_s.so.1
+7f904ac90000-7f904ac91000 rw-p 00016000 08:02 1569933                    /lib64/libgcc_s.so.1
+7f904ac91000-7f904ad91000 r-xp 00000000 08:02 1569942                    /lib64/libm-2.19.so
+7f904ad91000-7f904af90000 ---p 00100000 08:02 1569942                    /lib64/libm-2.19.so
+7f904af90000-7f904af91000 r--p 000ff000 08:02 1569942                    /lib64/libm-2.19.so
+7f904af91000-7f904af92000 rw-p 00100000 08:02 1569942                    /lib64/libm-2.19.so
+7f904af92000-7f904b10b000 r-xp 00000000 08:02 805743                     /usr/lib64/libstdc++.so.6.0.22
+7f904b10b000-7f904b30b000 ---p 00179000 08:02 805743                     /usr/lib64/libstdc++.so.6.0.22
+7f904b30b000-7f904b315000 r--p 00179000 08:02 805743                     /usr/lib64/libstdc++.so.6.0.22
+7f904b315000-7f904b317000 rw-p 00183000 08:02 805743                     /usr/lib64/libstdc++.so.6.0.22
+7f904b317000-7f904b31b000 rw-p 00000000 00:00 0 
+7f904b31b000-7f904b31e000 r-xp 00000000 08:02 1569925                    /lib64/libdl-2.19.so
+7f904b31e000-7f904b51d000 ---p 00003000 08:02 1569925                    /lib64/libdl-2.19.so
+7f904b51d000-7f904b51e000 r--p 00002000 08:02 1569925                    /lib64/libdl-2.19.so
+7f904b51e000-7f904b51f000 rw-p 00003000 08:02 1569925                    /lib64/libdl-2.19.so
+7f904b51f000-7f904b6bd000 r-xp 00000000 08:02 1569911                    /lib64/libc-2.19.so
+7f904b6bd000-7f904b8bd000 ---p 0019e000 08:02 1569911                    /lib64/libc-2.19.so
+7f904b8bd000-7f904b8c1000 r--p 0019e000 08:02 1569911                    /lib64/libc-2.19.so
+7f904b8c1000-7f904b8c3000 rw-p 001a2000 08:02 1569911                    /lib64/libc-2.19.so
+7f904b8c3000-7f904b8c7000 rw-p 00000000 00:00 0 
+7f904b8c7000-7f904b8d6000 r-xp 00000000 58f:4e1b8 1152927438070617753    /lus/theta-fs0/software/buildtools/trackdeps/lib64/trackdeps.so
+7f904b8d6000-7f904bad5000 ---p 0000f000 58f:4e1b8 1152927438070617753    /lus/theta-fs0/software/buildtools/trackdeps/lib64/trackdeps.so
+7f904bad5000-7f904bad6000 r--p 0000e000 58f:4e1b8 1152927438070617753    /lus/theta-fs0/software/buildtools/trackdeps/lib64/trackdeps.so
+7f904bad6000-7f904bad7000 rw-p 0000f000 58f:4e1b8 1152927438070617753    /lus/theta-fs0/software/buildtools/trackdeps/lib64/trackdeps.so
+7f904bad7000-7f904baf8000 r-xp 00000000 08:02 1569903                    /lib64/ld-2.19.so
+7f904bca2000-7f904bca8000 rw-p 00000000 00:00 0 
+7f904bcb4000-7f904bcf7000 rw-p 00000000 00:00 0 
+7f904bcf7000-7f904bcf8000 r--p 00020000 08:02 1569903                    /lib64/ld-2.19.so
+7f904bcf8000-7f904bcf9000 rw-p 00021000 08:02 1569903                    /lib64/ld-2.19.so
+7f904bcf9000-7f904bcfa000 rw-p 00000000 00:00 0 
+7ffc0dba4000-7ffc0dbcc000 rw-p 00000000 00:00 0                          [stack]
+7ffc0dbf5000-7ffc0dbf7000 r-xp 00000000 00:00 0                          [vdso]
+ffffffffff600000-ffffffffff601000 r-xp 00000000 00:00 0                  [vsyscall]
