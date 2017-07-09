@@ -1,0 +1,8 @@
+this test profiles an executable that repeatedly calls
+gettimeofday -- a function in [vdso].
+
+"make run" will run the test
+
+success is defined as
+  there is a [vdso] file in the measurement directory, if the machine supports [vdso]
+  the experiment.xml file contains a reference to [vdso], if the machine supports [vdso]

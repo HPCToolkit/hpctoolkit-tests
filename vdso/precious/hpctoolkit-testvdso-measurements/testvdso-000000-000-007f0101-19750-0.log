@@ -1,0 +1,7 @@
+[19750, N]: SYSTEM_SERVER: warning: memory usage: 51 Meg
+MEMORY: segment size: 4.0 meg, num segments: 1, total allocation: 4.0 meg, reclaims: 0
+MEMORY: total freeable: 0.0 meg, total non-freeable: 0.0 meg, malloc failures: 0
+SAMPLE ANOMALIES: blocks: 0 (async: 0, dlopen: 0), errors: 0 (segv: 0, soft: 0)
+SUMMARY: samples: 343 (recorded: 343, blocked: 0, errant: 0, trolled: 0, yielded: 0),
+         frames: 1243 (trolled: 0)
+         intervals: 52 (suspicious: 0)
