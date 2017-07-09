@@ -12,6 +12,10 @@ ifndef HPCT_SRCROOT
 USAGE=1
 endif
 
+ifndef HPCT_BUILD
+USAGE=1
+endif
+
 ifndef HPCT_INSTALL
 USAGE=1
 endif
@@ -21,24 +25,27 @@ usage:
 	@echo "usage: make EXT_INSTALL=<hpctoolkit-externals install dir> \\"
 	@echo "            HPCT_SRCROOT=<hpctoolkit source dir> \\"
 	@echo "            HPCT_INSTALL=<hpctoolkit install dir>"
+	@echo "            HPCT_BUILD=<hpctoolkit build dir>"
 endif
 
 EU_ROOT=$(EXT_INSTALL)/libelf
 
 all: $(TARGET) test
 
-PL_INCLUDE=-I$(HPCT_SRCROOT)/src/lib/prof-lean
-PL_LIB=$(HPCT_INSTALL)/lib/hpctoolkit/libhpcrun.a
+BU_INCLUDE=-I$(HPCT_SRCROOT)/src/lib/binutils
+BU_LIB=$(HPCT_BUILD)/src/lib/binutils/libHPCbinutils.la
+PL_LIB=$(HPCT_INSTALL)/lib/hpctoolkit/libhpcrun.a 
 
 EU_INCLUDE=-I$(EU_ROOT)
 EU_LIB=-L$(EU_ROOT)/lib -Wl,-rpath,$(EU_ROOT)/lib -lelf 
 
 
 INCLUDES= \
-	$(PL_INCLUDE) \
+	$(BU_INCLUDE) \
 	$(EU_INCLUDE) 
 
 LIBS= \
+	$(BU_LIB) \
 	$(PL_LIB) \
 	$(EU_LIB) \
 	-ldl
