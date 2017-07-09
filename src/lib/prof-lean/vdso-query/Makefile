@@ -1,4 +1,5 @@
 TARGET=vdso-query
+CC=gcc
 
 OBJS = main.o 
 
@@ -28,7 +29,7 @@ LIBS= \
 	$(PL_LIB)
 
 $(TARGET): main.c $(OBJS) 
-	libtool --mode=link gcc -g $(INCLUDES) -o $@ $(OBJS) $(LIBS)
+	libtool --mode=link --tag=CC $(CC) -g $(INCLUDES) -o $@ $(OBJS) $(LIBS)
 
 %.o: %.c
 	gcc -c -g $(INCLUDES) -o $@ $<
