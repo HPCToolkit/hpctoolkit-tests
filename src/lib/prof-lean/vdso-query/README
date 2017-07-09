@@ -1,12 +1,6 @@
-This test exercises functionality in 
-  lib/prof-lean/dso_symbol.c  
-  lib/prof-lean/vdso.c  
-  lib/prof-lean/procmaps.c  
-to scrape symbols out of a dynamic shared library or [vdso]. 
+Record /proc/self/maps and [vdso] to support regression testing of
+runtime environment analysis modules that parse /proc/self/maps and
+analyze symbols in [vdso]
 
 usage:
-  nm-dso [load-module]
-
-argument description:
-  load-module: a dynamic shared library. 
-               if none specified, it defaults to [vdso]
+  ./vdso-query

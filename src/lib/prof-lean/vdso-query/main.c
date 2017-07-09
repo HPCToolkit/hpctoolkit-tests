@@ -31,17 +31,16 @@
 //
 //----------------------------------------------------------------------
 //
-//  Verify operation of dso_symbols code, which extracts symbols from 
-//  dynamic shared libraries.
+//  Record /proc/self/maps and [vdso] to support regression testing of
+//  runtime environment analysis modules. 
 //
 //  John Mellor-Crummey
 //  Rice University
 //  July 2017
 //  johnmc@rice.edu
 //
-//  Usage: ./nm-dso [load-module]
-//     if load-module is omitted, it will print symbols for [vdso]
-//
+//  Usage: ./vdso-query 
+
 
 //******************************************************************************
 // system includes
