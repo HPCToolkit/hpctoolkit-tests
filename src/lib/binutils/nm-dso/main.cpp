@@ -55,40 +55,7 @@
 // local includes
 //******************************************************************************
 
-#include <dso_symbols.h>
-
-
-
-//******************************************************************************
-// private functions
-//******************************************************************************
-
-static const char *
-binding_string
-(
- dso_symbol_bind_t bind
-)
-{
-  switch(bind) {
-  case dso_symbol_bind_local:  return "LOCAL";
-  case dso_symbol_bind_global: return "GLOBAL";
-  case dso_symbol_bind_weak:   return "WEAK";
-  case dso_symbol_bind_other:  return "OTHER";
-  }
-}
-
-static void
-note_symbol
-(
- const char *sym_name,
- int64_t sym_addr,
- dso_symbol_bind_t binding,
- void *callback_arg 
-) 
-{
-  printf("0x%016lx  %6s  %s\n", sym_addr, binding_string(binding), sym_name);
-}
-
+#include <VdsoSymbols.hpp>
 
 
 //******************************************************************************
@@ -98,10 +65,9 @@ note_symbol
 int
 main(int argc, char **argv)
 {
-  int success = (argc == 1) ?
-    dso_symbols_vdso(note_symbol, 0) :
-    dso_symbols(argv[1], note_symbol, 0);
-
+  VdsoSymbols s;
+  int success = s.parse((argc == 1) ? 0 : argv[1]);
+  s.dump();
   return success ? 0 : -1;
 }
 

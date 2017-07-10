@@ -29,6 +29,8 @@ usage:
 endif
 
 EU_ROOT=$(EXT_INSTALL)/libelf
+ST_ROOT=$(EXT_INSTALL)/symtabAPI
+DW_ROOT=$(EXT_INSTALL)/libdwarf
 
 all: $(TARGET) test
 
@@ -36,25 +38,27 @@ BU_INCLUDE=-I$(HPCT_SRCROOT)/src/lib/binutils
 BU_LIB=$(HPCT_BUILD)/src/lib/binutils/libHPCbinutils.la
 PL_LIB=$(HPCT_INSTALL)/lib/hpctoolkit/libhpcrun.a 
 
-EU_INCLUDE=-I$(EU_ROOT)
+ST_LIB=-L$(ST_ROOT)/lib -Wl,-rpath,$(ST_ROOT)/lib -lparseAPI -linstructionAPI -lsymtabAPI  
+DW_LIB=-L$(DW_ROOT)/lib -Wl,-rpath,$(DW_ROOT)/lib -ldwarf 
 EU_LIB=-L$(EU_ROOT)/lib -Wl,-rpath,$(EU_ROOT)/lib -lelf 
 
 
 INCLUDES= \
-	$(BU_INCLUDE) \
-	$(EU_INCLUDE) 
+	$(BU_INCLUDE)
 
 LIBS= \
 	$(BU_LIB) \
 	$(PL_LIB) \
+	$(ST_LIB) \
+	$(DW_LIB) \
 	$(EU_LIB) \
 	-ldl
 
-$(TARGET): main.c $(OBJS) 
-	libtool --mode=link gcc -g $(INCLUDES) -o $@ $(OBJS) $(LIBS)
+$(TARGET): main.cpp $(OBJS) 
+	libtool --mode=link g++ -g $(INCLUDES) -o $@ $(OBJS) $(LIBS)
 
-%.o: %.c
-	gcc -c -g $(INCLUDES) -o $@ $<
+%.o: %.cpp
+	g++ -c -g $(INCLUDES) -o $@ $<
 
 
 test: $(TARGET)
