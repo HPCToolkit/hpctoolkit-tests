@@ -1,0 +1,13 @@
+10000000-10010000 r-xp 00000000 00:13 97924692                           /home/johnmc/pkgs-src/hpctoolkit-tests/src/lib/prof-lean/vdso-query/vdso-query
+10010000-10020000 rw-p 00000000 00:13 97924692                           /home/johnmc/pkgs-src/hpctoolkit-tests/src/lib/prof-lean/vdso-query/vdso-query
+80211a0000-80211d0000 r-xp 00000000 fd:00 6557928                        /lib64/ld-2.12.so
+80211d0000-80211e0000 r--p 00020000 fd:00 6557928                        /lib64/ld-2.12.so
+80211e0000-80211f0000 rw-p 00030000 fd:00 6557928                        /lib64/ld-2.12.so
+8021210000-80213d0000 r-xp 00000000 fd:00 6557929                        /lib64/libc-2.12.so
+80213d0000-80213e0000 r--p 001b0000 fd:00 6557929                        /lib64/libc-2.12.so
+80213e0000-80213f0000 rw-p 001c0000 fd:00 6557929                        /lib64/libc-2.12.so
+80213f0000-8021400000 rw-p 00000000 00:00 0 
+1000ccd0000-1000cd00000 rw-p 00000000 00:00 0                            [heap]
+fffb28f0000-fffb2900000 rw-p 00000000 00:00 0 
+fffb2900000-fffb2920000 r-xp 00000000 00:00 0                            [vdso]
+fffd7580000-fffd76d0000 rw-p 00000000 00:00 0                            [stack]
