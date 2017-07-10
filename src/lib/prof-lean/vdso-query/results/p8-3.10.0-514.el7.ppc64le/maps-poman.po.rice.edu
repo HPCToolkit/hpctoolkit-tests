@@ -1,0 +1,13 @@
+10000000-10010000 r-xp 00000000 00:27 120915227                          /home/johnmc/pkgs-src/hpctoolkit-tests/src/lib/prof-lean/vdso-query/vdso-query
+10010000-10020000 r--p 00000000 00:27 120915227                          /home/johnmc/pkgs-src/hpctoolkit-tests/src/lib/prof-lean/vdso-query/vdso-query
+10020000-10030000 rw-p 00010000 00:27 120915227                          /home/johnmc/pkgs-src/hpctoolkit-tests/src/lib/prof-lean/vdso-query/vdso-query
+10039ba0000-10039bd0000 rw-p 00000000 00:00 0                            [heap]
+3fff984f0000-3fff986b0000 r-xp 00000000 fd:00 32904                      /usr/lib64/libc-2.17.so
+3fff986b0000-3fff986c0000 r--p 001b0000 fd:00 32904                      /usr/lib64/libc-2.17.so
+3fff986c0000-3fff986d0000 rw-p 001c0000 fd:00 32904                      /usr/lib64/libc-2.17.so
+3fff986d0000-3fff986e0000 rw-p 00000000 00:00 0 
+3fff986e0000-3fff98700000 r-xp 00000000 00:00 0                          [vdso]
+3fff98700000-3fff98730000 r-xp 00000000 fd:00 32897                      /usr/lib64/ld-2.17.so
+3fff98730000-3fff98740000 r--p 00020000 fd:00 32897                      /usr/lib64/ld-2.17.so
+3fff98740000-3fff98750000 rw-p 00030000 fd:00 32897                      /usr/lib64/ld-2.17.so
+3fffcfe80000-3fffcfeb0000 rw-p 00000000 00:00 0                          [stack]
