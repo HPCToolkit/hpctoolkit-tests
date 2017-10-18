@@ -1,0 +1,9 @@
+CC=cc
+CPP=CC
+F90=ftn
+
+CFLAGS=-g -O2
+
+# hpctoolkit installation
+MY_HPCTOOLKIT_ROOT=/global/cscratch1/sd/laksono/pkgs/hpctoolkit
+MY_HPCLINK=$(MY_HPCTOOLKIT_ROOT)/bin/hpclink
