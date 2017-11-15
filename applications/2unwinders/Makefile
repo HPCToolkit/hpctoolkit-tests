@@ -1,10 +1,11 @@
-OFLAGS =-O2
+OFLAGS =-O2 -fopenmp
 OBJS = 2unwinders-omp
+CXX=icpc
 
 all: $(OBJS)
 
 % : %.cpp 
-	g++ $(OFLAGS) -o $@ $<
+	$(CXX) $(OFLAGS) -o $@ $<
 
 clean:
 	/bin/rm -rf $(OBJS)
