@@ -1,4 +1,4 @@
-OFLAGS =-O2 -fopenmp
+OFLAGS =-O0 -fopenmp
 OBJS = 2unwinders-omp
 CXX=icpc
 
