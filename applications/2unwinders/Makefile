@@ -1,11 +1,14 @@
-OFLAGS =-O0 -fopenmp
+OFLAGS =-O2 -fopenmp
 OBJS = 2unwinders-omp
 CXX=icpc
 
-all: $(OBJS)
+all: $(OBJS) dump
 
 % : %.cpp 
 	$(CXX) $(OFLAGS) -o $@ $<
 
+dump: $(OBJS)
+	objdump -D $(OBJS) > $@
+
 clean:
-	/bin/rm -rf $(OBJS)
+	/bin/rm -rf $(OBJS) dump
