@@ -1,0 +1,44 @@
+ifndef BOOST_ROOT
+boost_error:
+	@echo usage: make -f Makefile.dyninst BOOST_ROOT=... DYNINST_ROOT=... TARGET=...
+endif
+
+ifndef DYNINST_ROOT
+symtab_error:
+	@echo usage: make -f Makefile.dyninst BOOST_ROOT=... DYNINST_ROOT=... TARGET=...
+endif
+
+BOOST_INCLUDE=-I$(BOOST_ROOT)/include 
+BOOST_LIBS= \
+	-L$(BOOST_ROOT)/lib -Wl,-rpath,$(BOOST_ROOT)/lib \
+        -lboost_system \
+        -lboost_filesystem \
+        -lboost_thread \
+        -lboost_date_time \
+        -lboost_timer \
+        -lboost_chrono \
+        -lboost_system \
+        -lboost_thread 
+
+DYNINST_INCLUDE=-I$(DYNINST_ROOT)/include 
+DYNINST_LIBS= \
+	-L$(DYNINST_ROOT)/lib -Wl,-rpath,$(DYNINST_ROOT)/lib \
+	-lsymtabAPI \
+	-lparseAPI \
+	-linstructionAPI 
+
+TCMALLOC_ROOT=/home/johnmc/parallel-parsing/gperftools-2.6.1/INSTALL-gperf
+TCMALLOC_LIBS=  -L$(TCMALLOC_ROOT)/lib -Wl,-rpath,$(TCMALLOC_ROOT)/lib \
+	-ltcmalloc
+
+INCLUDES= \
+	$(BOOST_INCLUDE) \
+	$(DYNINST_INCLUDE)
+
+LIBS= \
+	$(DYNINST_LIBS) \
+	$(BOOST_LIBS) \
+	$(TCMALLOC_LIBS)
+
+$(TARGET): $(TARGET).cpp
+	g++ -g $(PMODEL_OPT) -std=c++11 $(INCLUDES) -o $@ $< $(LIBS)
