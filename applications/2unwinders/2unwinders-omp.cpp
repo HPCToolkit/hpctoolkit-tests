@@ -1,4 +1,5 @@
 #define N 42
+#include <stdio.h>
 
 long a(int n)
 {
@@ -21,11 +22,11 @@ long c(int n)
 
 int main(int argc, char **argv)
 {
-	a(N);
+	printf("%ld\n", a(N));
 #pragma omp parallel 
 	{
-		b(N);
+		printf("%ld\n", b(N));
 	}
-	c(N);
+	printf("%ld\n", c(N));
 	return 0;
 }
