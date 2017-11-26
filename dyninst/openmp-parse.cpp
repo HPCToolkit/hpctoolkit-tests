@@ -230,7 +230,7 @@ doBlock(Block * block, BlockSet & visited, FuncInfo & finfo)
 
     // split basic block into instructions (optional)
     if (opts.do_instns) {
-	map <Offset, Instruction> imap;
+	map <Offset, InstructionAPI::InstructionPtr> imap;
 	block->getInsns(imap);
 
 	for (auto iit = imap.begin(); iit != imap.end(); ++iit) {
