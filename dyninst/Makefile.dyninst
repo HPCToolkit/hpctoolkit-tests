@@ -1,13 +1,3 @@
-ifndef BOOST_ROOT
-boost_error:
-	@echo usage: make -f Makefile.dyninst BOOST_ROOT=... DYNINST_ROOT=... TARGET=...
-endif
-
-ifndef DYNINST_ROOT
-symtab_error:
-	@echo usage: make -f Makefile.dyninst BOOST_ROOT=... DYNINST_ROOT=... TARGET=...
-endif
-
 BOOST_INCLUDE=-I$(BOOST_ROOT)/include 
 BOOST_LIBS= \
 	-L$(BOOST_ROOT)/lib -Wl,-rpath,$(BOOST_ROOT)/lib \
@@ -27,7 +17,7 @@ DYNINST_LIBS= \
 	-lparseAPI \
 	-linstructionAPI 
 
-TCMALLOC_ROOT=/home/johnmc/parallel-parsing/gperftools-2.6.1/INSTALL-gperf
+TCMALLOC_ROOT=${GPERFTOOLS}
 TCMALLOC_LIBS=  -L$(TCMALLOC_ROOT)/lib -Wl,-rpath,$(TCMALLOC_ROOT)/lib \
 	-ltcmalloc
 

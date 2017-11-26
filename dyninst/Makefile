@@ -19,10 +19,15 @@ ext_error3:
 	@echo "usage: make PMODEL_OPT=<compiler opt for programming model> ..."
 endif
 
+ifndef GPERFTOOLS
+ext_error3:
+	@echo "usage: make GPERFTOOLS=</path/to/gperftools/install> ..."
+endif
+
 build: $(TARGET) 
 
 $(TARGET):
-	make -f Makefile.dyninst BOOST_ROOT=$(BOOST_ROOT) DYNINST_ROOT=$(DYNINST_ROOT) TARGET=$(TARGET) PMODEL_OPT=$(PMODEL_OPT)
+	make -f Makefile.dyninst BOOST_ROOT=$(BOOST_ROOT) DYNINST_ROOT=$(DYNINST_ROOT) TARGET=$(TARGET) PMODEL_OPT=$(PMODEL_OPT) GPERFTOOLS=${GPERFTOOLS}
 
 
 test: $(TARGET)
