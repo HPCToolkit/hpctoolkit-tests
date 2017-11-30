@@ -1,5 +1,4 @@
-F90=xlf90
-CFLAGS=-g -O2
+include ../Makefile.include
 
 OBJ = mxm.f90
 

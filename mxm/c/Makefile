@@ -1,5 +1,4 @@
-CC=xlc
-CFLAGS=-g -O2
+include ../Makefile.include
 
 OBJ = mxm.c
 

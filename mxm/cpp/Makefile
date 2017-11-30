@@ -1,13 +1,12 @@
-CC=xlc++
-CFLAGS=-g -O2
+include ../Makefile.include
 
 OBJ = mxm.cpp
 
-%.o: %.c $(DEPS)
-	$(CC) -c -o $@ $< $(CFLAGS)
+%.o: %.cpp $(DEPS)
+	$(CPP) -c -o $@ $< $(CFLAGS)
 
 mxm.exe: $(OBJ)
-	$(CC) -o $@ $^ $(CFLAGS)
+	$(CPP) -o $@ $^ $(CFLAGS)
 
 clean:
 	rm -f *.o mxm.exe
