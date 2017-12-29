@@ -364,7 +364,7 @@ getOptions(int argc, char **argv, Options & opts)
 	    opts.print = true;
 	    n++;
 	}
-	if (arg == "-I" || arg == "-Iall") {
+	else if (arg == "-I" || arg == "-Iall") {
 	    opts.do_instns = false;
 	    n++;
 	}
