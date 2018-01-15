@@ -230,7 +230,7 @@ doBlock(Block * block, BlockSet & visited, FuncInfo & finfo)
 
     // split basic block into instructions (optional)
     if (opts.do_instns) {
-	map <Offset, Instruction> imap;
+ 	Dyninst::ParseAPI::Block::Insns imap;
 	block->getInsns(imap);
 
 	for (auto iit = imap.begin(); iit != imap.end(); ++iit) {
@@ -363,8 +363,7 @@ getOptions(int argc, char **argv, Options & opts)
 	if (arg == "-p") {
 	    opts.print = true;
 	    n++;
-	}
-	if (arg == "-I" || arg == "-Iall") {
+	} else if (arg == "-I" || arg == "-Iall") {
 	    opts.do_instns = false;
 	    n++;
 	}
@@ -433,9 +432,14 @@ main(int argc, char **argv)
     vector <Module *> modVec;
     the_symtab->getAllModules(modVec);
 
-    for (auto mit = modVec.begin(); mit != modVec.end(); ++mit) {
-	(*mit)->parseLineInformation();
+#pragma omp parallel
+{
+#pragma omp master
+    for (int i = 0; i < modVec.size(); i++) {
+#pragma omp task firstprivate(i)
+	modVec[i]->parseLineInformation();
     }
+}
 
     gettimeofday(&tv_symtab, NULL);
     getrusage(RUSAGE_SELF, &ru_symtab);
