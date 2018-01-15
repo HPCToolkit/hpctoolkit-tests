@@ -13,7 +13,6 @@ ext_error3:
 	@echo "usage: make TARGET=<targetname> ..."
 endif
 
-
 ifndef PMODEL_OPT
 ext_error3:
 	@echo "usage: make PMODEL_OPT=<compiler opt for programming model> ..."
