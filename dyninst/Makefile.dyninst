@@ -17,9 +17,11 @@ DYNINST_LIBS= \
 	-lparseAPI \
 	-linstructionAPI 
 
-TCMALLOC_ROOT=${GPERFTOOLS}
-TCMALLOC_LIBS=  -L$(TCMALLOC_ROOT)/lib -Wl,-rpath,$(TCMALLOC_ROOT)/lib \
-	-ltcmalloc
+MALLOC_DIR=`dirname ${MALLOC_LIB}`
+MALLOC_LIBRARY=`basename ${MALLOC_LIB}`
+MALLOC_LIBS=  -L$(MALLOC_DIR) -Wl,-rpath,$(MALLOC_DIR) \
+	${MALLOC_LIB}
+	
 
 INCLUDES= \
 	$(BOOST_INCLUDE) \
@@ -28,7 +30,7 @@ INCLUDES= \
 LIBS= \
 	$(DYNINST_LIBS) \
 	$(BOOST_LIBS) \
-	$(TCMALLOC_LIBS)
+	$(MALLOC_LIBS)
 
 $(TARGET): $(TARGET).cpp
 	g++ -g $(PMODEL_OPT) -std=c++11 $(INCLUDES) -o $@ $< $(LIBS)
