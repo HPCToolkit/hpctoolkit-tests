@@ -1,0 +1,116 @@
+<?xml version="1.0"?>
+<!DOCTYPE HPCToolkitStructure [
+<!-- ******************************************************************** -->
+<!-- HPCToolkit Structure DTD                                             -->
+<!-- Version 4.7                                                          -->
+<!-- ******************************************************************** -->
+
+<!ELEMENT HPCToolkitStructure (LM)*>
+<!ATTLIST HPCToolkitStructure
+	version CDATA #REQUIRED
+	i       CDATA #REQUIRED
+	n       CDATA #IMPLIED>
+  <!-- Load module: -->
+  <!--   (i)d: unique identifier for cross referencing -->
+  <!--   (n)ame -->
+  <!--   (l)ine range: "beg-end" (inclusive range) -->
+  <!--   (v)ma-range-set: "{[beg-end), [beg-end)...}" -->
+  <!ELEMENT LM (F|P)*>
+  <!ATTLIST LM
+	i CDATA #REQUIRED
+	n CDATA #REQUIRED
+	v CDATA #IMPLIED>
+  <!-- File: -->
+  <!ELEMENT F (P|L|S)*>
+  <!ATTLIST F
+	i CDATA #REQUIRED
+	n CDATA #REQUIRED>
+  <!-- Procedure: ln=link name (if different than name) -->
+  <!ELEMENT P (P|A|L|S|C)*>
+  <!ATTLIST P
+	i  CDATA #REQUIRED
+	n  CDATA #REQUIRED
+	ln CDATA #IMPLIED
+	l  CDATA #IMPLIED
+	s  CDATA #IMPLIED
+	v  CDATA #IMPLIED>
+  <!-- Alien: (f)ilename -->
+  <!ELEMENT A (A|L|S|C)*>
+  <!ATTLIST A
+	i CDATA #REQUIRED
+	f CDATA #IMPLIED
+	n CDATA #IMPLIED
+	ln CDATA #IMPLIED
+	l CDATA #IMPLIED
+	v CDATA #IMPLIED>
+  <!-- Loop -->
+  <!ELEMENT L (A|L|S|C)*>
+  <!ATTLIST L
+	i CDATA #REQUIRED
+	l CDATA #REQUIRED
+	f CDATA #IMPLIED
+	v CDATA #IMPLIED>
+  <!-- Statement -->
+  <!ELEMENT S (S)*>
+  <!ATTLIST S
+	i CDATA #REQUIRED
+	l CDATA #REQUIRED
+	v CDATA #IMPLIED>
+  <!-- Callsite (a special Statement) -->
+  <!ELEMENT C EMPTY>
+  <!ATTLIST C
+	i CDATA #REQUIRED
+	l CDATA #REQUIRED
+	v CDATA #IMPLIED>
+]>
+<HPCToolkitStructure i="0" version="4.7" n="">
+<LM i="2" n="/work/johnmc/parallel-parsing/hpctoolkit-tests/src/tool/hpcstruct/binaries/main.ppc" v="{}">
+  <F i="3" n="&lt;unknown file&gt; [main.ppc]">
+    <P i="4" n="_init" l="0" v="{[0x100002e8-0x100002e9)}">
+      <S i="5" l="0" v="{[0x100002e8-0x10000328)}"/>
+    </P>
+    <P i="6" n="__libc_start_main" l="0" v="{[0x10000340-0x10000341)}">
+      <S i="7" l="0" v="{[0x10000340-0x10000354)}"/>
+    </P>
+    <P i="8" n="_start" l="0" v="{[0x10000354-0x10000355)}">
+      <S i="9" l="0" v="{[0x10000354-0x10000390)}"/>
+    </P>
+    <P i="10" n="deregister_tm_clones" l="0" v="{[0x10000390-0x10000391)}">
+      <S i="11" l="0" v="{[0x10000390-0x10000400)}"/>
+    </P>
+    <P i="12" n="register_tm_clones" l="0" v="{[0x10000400-0x10000401)}">
+      <S i="13" l="0" v="{[0x10000400-0x10000470)}"/>
+    </P>
+    <P i="14" n="__do_global_dtors_aux" l="0" v="{[0x10000470-0x10000471)}">
+      <S i="15" l="0" v="{[0x10000470-0x100004d0) [0x10000508-0x10000540)}"/>
+      <L i="16" l="0" f="" v="{[0x100004d0-0x100004d1)}">
+        <S i="17" l="0" v="{[0x100004d0-0x10000508)}"/>
+      </L>
+    </P>
+    <P i="18" n="frame_dummy" l="0" v="{[0x10000540-0x10000541)}">
+      <S i="19" l="0" v="{[0x10000540-0x100005a8)}"/>
+    </P>
+    <P i="20" n="main" l="0" v="{[0x100005a8-0x100005a9)}">
+      <S i="21" l="0" v="{[0x100005a8-0x100005d0)}"/>
+    </P>
+    <P i="22" n="__libc_csu_fini" l="0" v="{[0x100005d0-0x100005d1)}">
+      <S i="23" l="0" v="{[0x100005d0-0x100005e0)}"/>
+    </P>
+    <P i="24" n="__libc_csu_init" l="0" v="{[0x100005e0-0x100005e1)}">
+      <S i="25" l="0" v="{[0x100005e0-0x10000630) [0x1000066c-0x100006a0)}"/>
+      <L i="26" l="0" f="" v="{[0x10000630-0x10000631)}">
+        <S i="27" l="0" v="{[0x10000630-0x1000066c)}"/>
+      </L>
+    </P>
+    <P i="28" n="__do_global_ctors_aux" l="0" v="{[0x100006a0-0x100006a1)}">
+      <S i="29" l="0" v="{[0x100006a0-0x100006e0) [0x10000708-0x10000768)}"/>
+      <L i="30" l="0" f="" v="{[0x100006e0-0x100006e1)}">
+        <S i="31" l="0" v="{[0x100006e0-0x10000708)}"/>
+      </L>
+    </P>
+    <P i="32" n="_fini" l="0" v="{[0x10000768-0x10000769)}">
+      <S i="33" l="0" v="{[0x10000768-0x10000790)}"/>
+    </P>
+  </F>
+</LM>
+</HPCToolkitStructure>
