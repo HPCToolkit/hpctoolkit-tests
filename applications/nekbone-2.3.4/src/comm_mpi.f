@@ -27,7 +27,7 @@ c-----------------------------------------------------------------------
 
       ! check upper tag size limit
       call mpi_attr_get(MPI_COMM_WORLD,MPI_TAG_UB,nval,flag,ierr)
-      if (nval.lt.(10000+max(lp,lelg))) then
+      if (nval.lt.(1000+max(lp,lelg))) then
          if(nid.eq.0) write(6,*) 'ABORT: MPI_TAG_UB too small!'
          call exitt
       endif
@@ -508,7 +508,7 @@ c        call print_stack()
 #endif
       endif 
 
-      nz1 = 1/(nx1-ny1)
+c      nz1 = 1/(nx1-ny1)
 
       call mpi_finalize (ierr)
       call exit(0)
