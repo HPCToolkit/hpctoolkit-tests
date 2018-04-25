@@ -59,6 +59,8 @@
 #define MY_USE_CILK  1
 
 #include <sys/types.h>
+#include <sys/time.h>
+#include <sys/resource.h>
 #include <err.h>
 #include <errno.h>
 #include <stdio.h>
@@ -232,7 +234,7 @@ doBlock(Block * block, BlockSet & visited, FuncInfo & finfo)
 
     // split basic block into instructions (optional)
     if (opts.do_instns) {
-	map <Offset, Instruction::Ptr> imap;
+	map <Offset, Instruction> imap;
 	block->getInsns(imap);
 
 	for (auto iit = imap.begin(); iit != imap.end(); ++iit) {
@@ -406,9 +408,26 @@ getOptions(int argc, char **argv, Options & opts)
 
 //----------------------------------------------------------------------
 
+void
+printTime(const char *label, struct timeval *tv_prev, struct timeval *tv_now,
+	  struct rusage *ru_prev, struct rusage *ru_now)
+{
+    float delta = (float)(tv_now->tv_sec - tv_prev->tv_sec)
+	+ ((float)(tv_now->tv_usec - tv_prev->tv_usec))/1000000.0;
+
+    printf("%s  %8.1f sec  %8ld meg  %8ld meg\n", label, delta,
+	   (ru_now->ru_maxrss - ru_prev->ru_maxrss)/1024,
+	   ru_now->ru_maxrss/1024);
+}
+
+//----------------------------------------------------------------------
+
 int
 main(int argc, char **argv)
 {
+    struct timeval tv_init, tv_symtab, tv_parse, tv_fini;
+    struct rusage  ru_init, ru_symtab, ru_parse, ru_fini;
+
     getOptions(argc, argv, opts);
 
 #if MY_USE_CILK
@@ -423,6 +442,9 @@ main(int argc, char **argv)
 #else
     opts.num_threads = 1;
 #endif
+
+    gettimeofday(&tv_init, NULL);
+    getrusage(RUSAGE_SELF, &ru_init);
 
     cout << "begin parsing: " << opts.filename << "\n"
 	 << "num threads: " << opts.num_threads << "\n";
@@ -440,9 +462,15 @@ main(int argc, char **argv)
 	(*mit)->parseLineInformation();
     }
 
+    gettimeofday(&tv_symtab, NULL);
+    getrusage(RUSAGE_SELF, &ru_symtab);
+
     SymtabCodeSource * code_src = new SymtabCodeSource(the_symtab);
     CodeObject * code_obj = new CodeObject(code_src);
     code_obj->parse();
+
+    gettimeofday(&tv_parse, NULL);
+    getrusage(RUSAGE_SELF, &ru_parse);
 
     // get function list and convert to vector.  cilk_for requires a
     // random access container.
@@ -460,9 +488,18 @@ main(int argc, char **argv)
 	doFunction(func);
     }
 
+    gettimeofday(&tv_fini, NULL);
+    getrusage(RUSAGE_SELF, &ru_fini);
+
     cout << "\ndone parsing: " << opts.filename << "\n"
 	 << "num threads: " << opts.num_threads
 	 << "  num funcs: " << funcVec.size() << "\n\n";
+
+    printTime("init:  ", &tv_init, &tv_init, &ru_init, &ru_init);
+    printTime("symtab:", &tv_init, &tv_symtab, &ru_init, &ru_symtab);
+    printTime("parse: ", &tv_symtab, &tv_parse, &ru_symtab, &ru_parse);
+    printTime("struct:", &tv_parse, &tv_fini, &ru_parse, &ru_fini);
+    printTime("total: ", &tv_init, &tv_fini, &ru_init, &ru_fini);
 
     return 0;
 }

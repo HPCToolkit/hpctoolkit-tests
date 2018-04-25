@@ -1,0 +1,36 @@
+BOOST_INCLUDE=-I$(BOOST_ROOT)/include 
+BOOST_LIBS= \
+	-L$(BOOST_ROOT)/lib -Wl,-rpath,$(BOOST_ROOT)/lib \
+        -lboost_system \
+        -lboost_filesystem \
+        -lboost_thread \
+        -lboost_date_time \
+        -lboost_timer \
+        -lboost_chrono \
+        -lboost_system \
+        -lboost_thread 
+
+DYNINST_INCLUDE=-I$(DYNINST_ROOT)/include 
+DYNINST_LIBS= \
+	-L$(DYNINST_ROOT)/lib -Wl,-rpath,$(DYNINST_ROOT)/lib \
+	-lsymtabAPI \
+	-lparseAPI \
+	-linstructionAPI 
+
+MALLOC_DIR=`dirname ${MALLOC_LIB}`
+MALLOC_LIBRARY=`basename ${MALLOC_LIB}`
+MALLOC_LIBS=  -L$(MALLOC_DIR) -Wl,-rpath,$(MALLOC_DIR) \
+	${MALLOC_LIB}
+	
+
+INCLUDES= \
+	$(BOOST_INCLUDE) \
+	$(DYNINST_INCLUDE)
+
+LIBS= \
+	$(DYNINST_LIBS) \
+	$(BOOST_LIBS) \
+	$(MALLOC_LIBS)
+
+$(TARGET): $(TARGET).cpp
+	g++ -g $(PMODEL_OPT) -std=c++11 $(INCLUDES) -o $@ $< $(LIBS)

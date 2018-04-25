@@ -1,0 +1,3 @@
+# environment changes need to run on knl
+ulimit -s unlimited
+export OMP_NUM_THREADS=4

@@ -1,0 +1,24 @@
+NOTES for amg2013.gnu.ppc:
+
+verified that all targ routines account for long_branch stubs
+
+missing long_branch stubs:
+
+   0x1000a80 <00000012.long_branch_r2off.__libc_start_main+0>:
+	lily pad folded into _start
+
+   0x1576344 <00007fb8.long_branch_r2off.__readonly_area+0>:
+	missing. called with vl from .vfprintf
+
+   0x158bfac <000082bc.long_branch_r2off._IO_getline+0>:
+   0x158d6c4 <00008368.long_branch_r2off._IO_vfscanf+0>:
+   0x158dfd4 <000083ca.long_branch_r2off.__lll_lock_wait_private+0>:
+   0x1591b6c <00008432.long_branch_r2off._Unwind_Resume+0>:
+   0x15925ec <00008496.long_branch_r2off._Unwind_Resume+0>:
+   0x15925f0 <00008496.long_branch_r2off._Unwind_Resume+0+4>:
+   0x15bafb4 <00008bb8.long_branch_r2off.__tcgetattr+0>:
+   0x15bfa2c <00008d5f.long_branch_r2off._Unwind_Resume+0>:
+   0x15bfafc <00008d5f.long_branch_r2off.__printf_fp+0>:
+   0x15bfc6c <00008d5f.long_branch_r2off.__btowc+0>:
+   0x15bfc9c <00008d5f.long_branch_r2off.__printf_fphex+0>:
+   0x15bfcfc <00008d5f.long_branch_r2off._IO_wpadn+0>:
