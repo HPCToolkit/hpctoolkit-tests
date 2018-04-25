@@ -123,8 +123,9 @@ ELF_LIB="${EXTERNALS}/libelf/lib"
 DWARF_INC="${EXTERNALS}/libdwarf/include"
 DWARF_LIB="${EXTERNALS}/libdwarf/lib"
 
-DYNINST_INC="${EXTERNALS}/symtabAPI/include"
-DYNINST_LIB="${EXTERNALS}/symtabAPI/lib"
+S=/home/johnmc/pkgs-src/dyninst/INSTALL-dyninst
+DYNINST_INC="${S}/include"
+DYNINST_LIB="${S}/lib"
 
 ZLIB_INC="${EXTERNALS}/zlib/include"
 ZLIB_LIB="${EXTERNALS}/zlib/lib"
