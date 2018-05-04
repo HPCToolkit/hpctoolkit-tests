@@ -5,7 +5,7 @@
 #define malloc_type(type, instances) (type *) malloc(sizeof_type_instances(type, instances))
 
 #define REPS 10
-#define N 1000000
+#define N 1000000000
 
 int *array;
 
