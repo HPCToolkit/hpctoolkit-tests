@@ -1,29 +1,43 @@
+#D=-dd LINUX_PERF
+C=-e cycles
+L=-e L1-DCACHE-LOADS
+S=-e L1-DCACHE-STORES
+
+EXP=cycles load store cycles_store cycles_load cycles_load_store
+
 all: run
 
-main: main.c
-	gcc -o main main.c
+main: main.cpp
+	g++ -o main -g main.cpp
 
 cycles: main
-	hpcrun -e cycles -o cycles ./main
+	hpcrun $(D) $(C) -o cycles ./main
 
-cycles_writes: main
-	hpcrun -e cycles -e PERF_COUNT_HW_CACHE_L1D:WRITE -o cycles_writes ./main
+store: main
+	hpcrun $(D) $(S) -o store ./main
 
-cycles_reads: main
-	hpcrun -e cycles -e PERF_COUNT_HW_CACHE_L1D:READ -o cycles_reads ./main
+load: main
+	hpcrun $(D) $(L) -o load ./main
 
-cycles_reads_writes:
-	hpcrun -e cycles -e PERF_COUNT_HW_CACHE_L1D:READ -e PERF_COUNT_HW_CACHE_L1D:WRITE -o cycles_reads_writes ./main
+cycles_store: main
+	hpcrun $(D) $(C) $(S) -o cycles_store ./main
 
-run: main.hpcstruct cycles cycles_writes cycles_reads cycles_reads_writes
+cycles_load: main
+	hpcrun $(D) $(C) $(L) -o cycles_load ./main
+
+cycles_load_store:
+	hpcrun $(D) $(C) $(L) $(S) -o cycles_load_store ./main
+
+run: main.hpcstruct  $(EXP)
 	hpcprof -S main.hpcstruct -o cycles-database cycles
-	hpcprof -S main.hpcstruct -o cycles_reads-database cycles_reads
-	hpcprof -S main.hpcstruct -o cycles_writes-database cycles_writes
-	hpcprof -S main.hpcstruct -o cycles_reads_writes-database cycles_reads_writes
+	hpcprof -S main.hpcstruct -o load-database load
+	hpcprof -S main.hpcstruct -o store-database store
+	hpcprof -S main.hpcstruct -o cycles_load-database cycles_load
+	hpcprof -S main.hpcstruct -o cycles_store-database cycles_store
+	hpcprof -S main.hpcstruct -o cycles_load_store-database cycles_load_store
 
 main.hpcstruct: main
 	hpcstruct main
 
 clean:
-	/bin/rm -rf main main.hpcstruct cycles cycles_writes cycles_reads cycles_reads_writes *database*
-
+	/bin/rm -rf main main.hpcstruct $(EXP) *database*
