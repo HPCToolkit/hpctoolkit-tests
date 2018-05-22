@@ -1,5 +1,5 @@
 //
-//  Copyright (c) 2017, Rice University.
+//  Copyright (c) 2017-2018, Rice University.
 //  All rights reserved.
 //
 //  Redistribution and use in source and binary forms, with or without
@@ -40,33 +40,43 @@
 //  for each function.
 //
 //  This program tests that ParseAPI and SymtabAPI can be run in
-//  parallel with openmp threads.  For now, we parse the entire binary
-//  sequentially (unless ParseAPI is built with threads) and then make
-//  parallel queries.
+//  parallel with openmp threads.  There are now two parallel phases:
+//  parse() a CodeObject inside ParseAPI, and the doFunction() loop as
+//  a proxy for hpcstruct queries.
 //
-//  Build me as:
-//  ./mk-dyninst.sh  -fopenmp  openmp-parse.cpp  externals-dir
+//  Use scripts from github.com/mwkrentel/myrepo to build me.
 //
 //  Usage:
-//  ./openmp-parse  [options]...  filename  [ num-threads ]
+//  ./openmp-parse  [options] ...  filename
 //
 //  Options:
-//   -p           print function information
+//   -j  num      use <num> openmp threads
+//   -jp num      use <num> threads for ParseAPI::parse()
+//   -p, -v       print verbose function information
+//   -D           disable delete CodeObject and Symtab CodeSource
+//   -M           disable read() file in memory before openFile()
 //   -I, -Iall    do not split basic blocks into instructions
 //   -Iinline     do not compute inline callsite sequences
 //   -Iline       do not compute line map info
+//   -h, --help   display usage message and exit
 //
 
+#define MY_USE_OPENMP  1
 
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <err.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
+#if MY_USE_OPENMP
 #include <omp.h>
+#endif
 
 #include <iostream>
 #include <map>
@@ -84,9 +94,6 @@
 #include <LineInformation.h>
 
 #define MAX_VMA  0xfffffffffffffff0
-#define DEFAULT_THREADS  4
-
-#define NT "OMP_NUM_THREADS"
 
 using namespace Dyninst;
 using namespace ParseAPI;
@@ -104,14 +111,22 @@ mutex mtx;
 class Options {
 public:
     const char *filename;
-    bool  print;
+    int   jobs;
+    int   jobs_parse;
+    bool  verbose;
+    bool  do_delete;
+    bool  do_memory;
     bool  do_instns;
     bool  do_inline;
     bool  do_linemap;
 
     Options() {
-	print = false;
 	filename = NULL;
+	jobs = -1;
+	jobs_parse = -1;
+	verbose = false;
+	do_delete = true;
+	do_memory = true;
 	do_instns = true;
 	do_inline = true;
 	do_linemap = true;
@@ -308,7 +323,7 @@ doFunction(ParseAPI::Function * func)
 	}
     }
 
-    if (opts.print) {
+    if (opts.verbose) {
       // print info for this function
       mtx.lock();
 
@@ -337,18 +352,23 @@ usage(string mesg)
 	cout << "error: " << mesg << "\n\n";
     }
 
-    cout << "usage: cilk-parse [options]... filename [num-threads]\n\n"
+    cout << "usage:  openmp-parse  [options]...  filename\n\n"
 	 << "options:\n"
-         << "  -p           print function information\n"
+	 << "  -j  num      use num openmp threads\n"
+	 << "  -jp num      use num threads for ParseAPI::parse()\n"
+	 << "  -p, -v       print verbose function information\n"
+	 << "  -D           disable delete CodeObject and Sybtab CodeSource\n"
+	 << "  -M           dsable read() file in memory before openFile\n"
 	 << "  -I, -Iall    do not split basic blocks into instructions\n"
 	 << "  -Iinline     do not compute inline callsite sequences\n"
 	 << "  -Iline       do not compute line map info\n"
+	 << "  -h, --help   display usage message and exit\n"
 	 << "\n";
 
     exit(1);
 }
 
-// Command-line: [options]... filename [num-threads]
+// Command-line:  [options] ...  filename
 void
 getOptions(int argc, char **argv, Options & opts)
 {
@@ -360,10 +380,42 @@ getOptions(int argc, char **argv, Options & opts)
     while (n < argc) {
 	string arg(argv[n]);
 
-	if (arg == "-p") {
-	    opts.print = true;
+	if (arg == "-h" || arg == "-help" || arg == "--help") {
+	    usage("");
+	}
+	else if (arg == "-j") {
+	    if (n + 1 >= argc) {
+	        usage("missing arg for -j");
+	    }
+	    opts.jobs = atoi(argv[n + 1]);
+	    if (opts.jobs <= 0) {
+	        errx(1, "bad arg for -j: %s", argv[n + 1]);
+	    }
+	    n += 2;
+	}
+	else if (arg == "-jp") {
+	    if (n + 1 >= argc) {
+	        usage("missing arg for -jp");
+	    }
+	    opts.jobs_parse = atoi(argv[n + 1]);
+	    if (opts.jobs_parse <= 0) {
+	        errx(1, "bad arg for -jp: %s", argv[n + 1]);
+	    }
+	    n += 2;
+	}
+	else if (arg == "-p" || arg == "-v") {
+	    opts.verbose = true;
 	    n++;
-	} else if (arg == "-I" || arg == "-Iall") {
+	}
+	else if (arg == "-D") {
+	    opts.do_delete = false;
+	    n++;
+	}
+	else if (arg == "-M") {
+	    opts.do_memory = false;
+	    n++;
+	}
+	else if (arg == "-I" || arg == "-Iall") {
 	    opts.do_instns = false;
 	    n++;
 	}
@@ -390,7 +442,21 @@ getOptions(int argc, char **argv, Options & opts)
     else {
 	usage("missing file name");
     }
-    n++;
+
+#if MY_USE_OPENMP
+    // if -j is not specified, then ask the runtime library.
+    if (opts.jobs < 1) {
+        opts.jobs = omp_get_max_threads();
+    }
+
+    // if -jp is not specified, then use -j for both.
+    if (opts.jobs_parse < 1) {
+        opts.jobs_parse = opts.jobs;
+    }
+#else
+    opts.jobs = 1;
+    opts.jobs_parse = 1;
+#endif
 }
 
 //----------------------------------------------------------------------
@@ -402,9 +468,11 @@ printTime(const char *label, struct timeval *tv_prev, struct timeval *tv_now,
     float delta = (float)(tv_now->tv_sec - tv_prev->tv_sec)
 	+ ((float)(tv_now->tv_usec - tv_prev->tv_usec))/1000000.0;
 
-    printf("%s  %8.1f sec  %8ld meg  %8ld meg\n", label, delta,
+    printf("%s  %8.1f sec  %8ld meg  %8ld meg", label, delta,
 	   (ru_now->ru_maxrss - ru_prev->ru_maxrss)/1024,
 	   ru_now->ru_maxrss/1024);
+
+    cout << endl;
 }
 
 //----------------------------------------------------------------------
@@ -417,15 +485,61 @@ main(int argc, char **argv)
 
     getOptions(argc, argv, opts);
 
+    cout << "begin open: " << opts.filename << "\n"
+	 << "parse threads: " << opts.jobs_parse
+	 << "  struct threads: " << opts.jobs << "\n" << endl;
+
     gettimeofday(&tv_init, NULL);
     getrusage(RUSAGE_SELF, &ru_init);
+    printTime("init:  ", &tv_init, &tv_init, &ru_init, &ru_init);
 
-    cout << "begin open: " << opts.filename << "\n"
-         << "OpenMP threads: " << omp_get_max_threads() << std::endl;
+#if MY_USE_OPENMP
+    omp_set_num_threads(opts.jobs_parse);
+#endif
 
-    if (! Symtab::openFile(the_symtab, opts.filename)) {
-	errx(1, "Symtab::openFile failed: %s", opts.filename);
+    char * mem_image = NULL;
+
+    if (opts.do_memory) {
+	//
+	// read filename into memory and pass to Symtab as a memory
+	// buffer.  this is what hpcstruct does.
+	//
+	int fd = open(opts.filename, O_RDONLY);
+	if (fd < 0) {
+	    err(1, "unable to open: %s", opts.filename);
+	}
+
+	struct stat sb;
+	int ret = fstat(fd, &sb);
+	if (ret != 0) {
+	    err(1, "unable to fstat: %s", opts.filename);
+	}
+	size_t file_size = sb.st_size;
+
+	mem_image = (char *) malloc(file_size);
+	if (mem_image == NULL) {
+	    err(1, "unable to malloc %ld bytes", file_size);
+	}
+
+	ssize_t len = read(fd, mem_image, file_size);
+	if (len < file_size) {
+	    err(1, "read only %ld out of %ld bytes", len, file_size);
+	}
+	close(fd);
+
+	if (! Symtab::openFile(the_symtab, mem_image, file_size, opts.filename)) {
+	    errx(1, "Symtab::openFile (in memory) failed: %s", opts.filename);
+	}
     }
+    else {
+	//
+	// let Symtab read the file itself (-M option).
+	//
+	if (! Symtab::openFile(the_symtab, opts.filename)) {
+	    errx(1, "Symtab::openFile (on disk) failed: %s", opts.filename);
+	}
+    }
+
     the_symtab->parseTypesNow();
     the_symtab->parseFunctionRanges();
 
@@ -443,16 +557,15 @@ main(int argc, char **argv)
 
     gettimeofday(&tv_symtab, NULL);
     getrusage(RUSAGE_SELF, &ru_symtab);
+    printTime("symtab:", &tv_init, &tv_symtab, &ru_init, &ru_symtab);
 
     SymtabCodeSource * code_src = new SymtabCodeSource(the_symtab);
     CodeObject * code_obj = new CodeObject(code_src);
 
-    printTime("symtab:", &tv_init, &tv_symtab, &ru_init, &ru_symtab);
     code_obj->parse();
 
     gettimeofday(&tv_parse, NULL);
     getrusage(RUSAGE_SELF, &ru_parse);
-
     printTime("parse: ", &tv_symtab, &tv_parse, &ru_symtab, &ru_parse);
 
     // get function list and convert to vector.  cilk_for requires a
@@ -466,24 +579,47 @@ main(int argc, char **argv)
 	funcVec.push_back(func);
     }
 
+#if MY_USE_OPENMP
+    omp_set_num_threads(opts.jobs);
+#endif
+
 #pragma omp parallel for
     for (long n = 0; n < funcVec.size(); n++) {
 	ParseAPI::Function * func = funcVec[n];
 	doFunction(func);
     }
 
+    if (opts.do_delete) {
+	if (opts.verbose) {
+	    cout << "\ndelete CodeObject, CodeSource, close Symtab ..." << endl;
+	}
+	delete code_obj;
+	delete code_src;
+	Symtab::closeSymtab(the_symtab);
+	if (opts.do_memory) {
+	    free(mem_image);
+	}
+    }
+
     gettimeofday(&tv_fini, NULL);
     getrusage(RUSAGE_SELF, &ru_fini);
+    if (! opts.verbose) {
+	printTime("struct:", &tv_parse, &tv_fini, &ru_parse, &ru_fini);
+	printTime("total: ", &tv_init, &tv_fini, &ru_init, &ru_fini);
+    }
 
     cout << "\ndone parsing: " << opts.filename << "\n"
-	 << "num threads: " << omp_get_max_threads()
-	 << "  num funcs: " << funcVec.size() << "\n\n";
+	 << "num threads: " << opts.jobs_parse << ", " << opts.jobs
+	 << "  num funcs: " << funcVec.size() << "\n" << endl;
 
-    printTime("init:  ", &tv_init, &tv_init, &ru_init, &ru_init);
-    printTime("symtab:", &tv_init, &tv_symtab, &ru_init, &ru_symtab);
-    printTime("parse: ", &tv_symtab, &tv_parse, &ru_symtab, &ru_parse);
-    printTime("struct:", &tv_parse, &tv_fini, &ru_parse, &ru_fini);
-    printTime("total: ", &tv_init, &tv_fini, &ru_init, &ru_fini);
+    if (opts.verbose) {
+	printTime("init:  ", &tv_init, &tv_init, &ru_init, &ru_init);
+	printTime("symtab:", &tv_init, &tv_symtab, &ru_init, &ru_symtab);
+	printTime("parse: ", &tv_symtab, &tv_parse, &ru_symtab, &ru_parse);
+	printTime("struct:", &tv_parse, &tv_fini, &ru_parse, &ru_fini);
+	printTime("total: ", &tv_init, &tv_fini, &ru_init, &ru_fini);
+	cout << endl;
+    }
 
     return 0;
 }
