@@ -66,12 +66,16 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include <iostream>
+
+#define DIAG_EMsg(x)  std::cerr << x << std::endl
+
 
 //******************************************************************************
 // local includes
 //******************************************************************************
 
-#include <lib/support/diagnostics.h>
+// #include <lib/support/diagnostics.h>
 
 #include "InputFile.hpp"
 #include "ElfHelper.hpp"

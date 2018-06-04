@@ -67,8 +67,8 @@
 // local includes
 //******************************************************************************
 
-#include <lib/support/StrUtil.hpp>
-#include <include/hpctoolkit-config.h>
+// #include <lib/support/StrUtil.hpp>
+// #include <include/hpctoolkit-config.h>
 
 #include <Elf_X.h>
 
@@ -175,8 +175,10 @@ recordIfCubin
 {
   char *sectionData = elfSectionGetData(obj_ptr, shdr);
 
-  std::string filename = loadModule->getFileName() + "@" +
-    StrUtil::toStr(shdr->sh_addr, 16);
+  char buf[20];
+  sprintf(buf, "0x%lx", shdr->sh_addr);
+
+  std::string filename = loadModule->getFileName() + "@" + buf;
 
   ElfFile *elfFile = new ElfFile;
 
