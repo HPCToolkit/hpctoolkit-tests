@@ -1,26 +1,24 @@
 #include <CFGFactory.h>
+#include <unordered_map>
+
+#include "DotCFG.hpp"
 
 namespace Dyninst {
 namespace ParseAPI {
 
 class PARSER_EXPORT CudaCFGFactory : public CFGFactory {   
  public:
-    CudaCFGFactory() {};
-    virtual ~CudaCFGFactory();
+    CudaCFGFactory(std::vector<CudaParse::Function *> &functions) : _functions(functions) {};
+    ~CudaCFGFactory();
 
  protected:
     virtual Function * mkfunc(Address addr, FuncSource src, 
             std::string name, CodeObject * obj, CodeRegion * region, 
             Dyninst::InstructionSource * isrc);
-    virtual Block * mkblock(Function * f, CodeRegion * r, 
-            Address addr);
-    virtual Edge * mkedge(Block * src, Block * trg, 
-            EdgeTypeEnum type);
-    virtual Block * mksink(CodeObject *obj, CodeRegion *r);
 
-    virtual void free_func(Function * f);
-    virtual void free_block(Block * b);
-    virtual void free_edge(Edge * e);
+ private:
+    std::vector<CudaParse::Function *> &_functions;
+    std::unordered_map<size_t, Block *> _block_filter; 
 };
 
 }

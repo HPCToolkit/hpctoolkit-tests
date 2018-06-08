@@ -99,6 +99,9 @@
 #include "Fatbin.hpp"
 #include "InputFile.hpp"
 #include "RelocateCubin.hpp"
+#include "CudaCodeSource.hpp"
+#include "GraphReader.hpp"
+#include "CFGParser.hpp"
 
 #define MAX_VMA  0xfffffffffffffff0
 
@@ -559,15 +562,42 @@ main(int argc, char **argv)
 	gettimeofday(&tv_symtab, NULL);
 	getrusage(RUSAGE_SELF, &ru_symtab);
 
-	SymtabCodeSource * code_src = NULL;
+	CodeSource * code_src = NULL;
 	CodeObject * code_obj = NULL;
 
 	if (cuda_file) {
-	    //
-	    // FIXME: write a replacement for CodeObject and parse()
-	    //
-	    cout << "\nskip cuda:  " << elf_name << endl;
-	    continue;
+      std::string relocated_cubin = filename + ".relocated";
+      int fd = open(relocated_cubin.c_str(), O_WRONLY);
+      if (write(fd, elf_addr, elf_len) != elf_len) {
+          cout << "Write " << relocated_cubin << " to disk failed" << endl; 
+          continue;
+      }
+
+      std::string relocated_dot = filename + ".dot";
+      std::string cmd = "nvdisasm -cfg -poff " + relocated_cubin + " > " + relocated_dot;
+      std::shared_ptr<FILE> pipe(popen(cmd.c_str(), "r"), pclose);
+      if (!pipe) {
+          cout << "Dump " << relocated_dot << " to disk failed" << endl; 
+          continue;
+      }
+
+      CudaParse::GraphReader graph_reader(relocated_dot);
+      CudaParse::Graph graph;
+      graph_reader.read(graph);
+      CudaParse::CFGParser cfg_parser;
+      std::vector<CudaParse::Function *> functions;
+      cfg_parser.parse(graph, functions);
+
+      code_src = new CudaCodeSource(functions); 
+      std::vector< Hint > hints = code_src->hints();
+      for (auto hint : hints) {
+          cout << hint._name << std::endl;
+      }
+      //code_obj = new CodeObject(code_src);
+      for (auto *function : functions) {
+        delete function;
+      }
+      continue;
 	}
 	else {
 	    code_src = new SymtabCodeSource(the_symtab);
@@ -617,8 +647,13 @@ main(int argc, char **argv)
 	    delete code_obj;
 	}
 	if (code_src != NULL) {
-	    delete code_src;
+      if (cuda_file) {
+	        delete (CudaCodeSource *)code_src;
+      } else {
+	        delete (SymtabCodeSource *)code_src;
+      }
 	}
+
 	Symtab::closeSymtab(the_symtab);
     }
 
