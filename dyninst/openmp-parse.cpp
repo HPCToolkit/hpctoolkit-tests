@@ -52,6 +52,7 @@
 //  Options:
 //   -j  num      use <num> openmp threads
 //   -jp num      use <num> threads for ParseAPI::parse()
+//   -js num      use <num> threads for Symtab methods
 //   -p, -v       print verbose function information
 //   -D           disable delete CodeObject and Symtab CodeSource
 //   -M           disable read() file in memory before openFile()
@@ -113,6 +114,7 @@ public:
     const char *filename;
     int   jobs;
     int   jobs_parse;
+    int   jobs_symtab;
     bool  verbose;
     bool  do_delete;
     bool  do_memory;
@@ -124,6 +126,7 @@ public:
 	filename = NULL;
 	jobs = -1;
 	jobs_parse = -1;
+	jobs_symtab = -1;
 	verbose = false;
 	do_delete = true;
 	do_memory = true;
@@ -403,6 +406,16 @@ getOptions(int argc, char **argv, Options & opts)
 	    }
 	    n += 2;
 	}
+	else if (arg == "-js") {
+	    if (n + 1 >= argc) {
+	        usage("missing arg for -js");
+	    }
+	    opts.jobs_symtab = atoi(argv[n + 1]);
+	    if (opts.jobs_symtab <= 0) {
+	        errx(1, "bad arg for -js: %s", argv[n + 1]);
+	    }
+	    n += 2;
+	}
 	else if (arg == "-p" || arg == "-v") {
 	    opts.verbose = true;
 	    n++;
@@ -453,9 +466,15 @@ getOptions(int argc, char **argv, Options & opts)
     if (opts.jobs_parse < 1) {
         opts.jobs_parse = opts.jobs;
     }
+
+    // if -js is not specified, then use -jp
+    if (opts.jobs_symtab < 1) {
+	opts.jobs_symtab = opts.jobs_parse;
+    }
 #else
     opts.jobs = 1;
     opts.jobs_parse = 1;
+    opts.jobs_symtab = 1;
 #endif
 }
 
@@ -486,7 +505,8 @@ main(int argc, char **argv)
     getOptions(argc, argv, opts);
 
     cout << "begin open: " << opts.filename << "\n"
-	 << "parse threads: " << opts.jobs_parse
+	 << "symtab threads: " << opts.jobs_symtab
+	 << "  parse threads: " << opts.jobs_parse
 	 << "  struct threads: " << opts.jobs << "\n" << endl;
 
     gettimeofday(&tv_init, NULL);
@@ -494,7 +514,7 @@ main(int argc, char **argv)
     printTime("init:  ", &tv_init, &tv_init, &ru_init, &ru_init);
 
 #if MY_USE_OPENMP
-    omp_set_num_threads(opts.jobs_parse);
+    omp_set_num_threads(opts.jobs_symtab);
 #endif
 
     char * mem_image = NULL;
@@ -546,18 +566,21 @@ main(int argc, char **argv)
     vector <Module *> modVec;
     the_symtab->getAllModules(modVec);
 
-#pragma omp parallel
-{
-#pragma omp master
-    for (int i = 0; i < modVec.size(); i++) {
-#pragma omp task firstprivate(i)
-	modVec[i]->parseLineInformation();
-    }
-}
+#pragma omp parallel  shared(modVec)
+    {
+#pragma omp for  schedule(dynamic, 1)
+      for (uint i = 0; i < modVec.size(); i++) {
+	  modVec[i]->parseLineInformation();
+      }
+    }  // end parallel
 
     gettimeofday(&tv_symtab, NULL);
     getrusage(RUSAGE_SELF, &ru_symtab);
     printTime("symtab:", &tv_init, &tv_symtab, &ru_init, &ru_symtab);
+
+#if MY_USE_OPENMP
+    omp_set_num_threads(opts.jobs_parse);
+#endif
 
     SymtabCodeSource * code_src = new SymtabCodeSource(the_symtab);
     CodeObject * code_obj = new CodeObject(code_src);
@@ -567,6 +590,10 @@ main(int argc, char **argv)
     gettimeofday(&tv_parse, NULL);
     getrusage(RUSAGE_SELF, &ru_parse);
     printTime("parse: ", &tv_symtab, &tv_parse, &ru_symtab, &ru_parse);
+
+#if MY_USE_OPENMP
+    omp_set_num_threads(opts.jobs);
+#endif
 
     // get function list and convert to vector.  cilk_for requires a
     // random access container.
@@ -579,15 +606,14 @@ main(int argc, char **argv)
 	funcVec.push_back(func);
     }
 
-#if MY_USE_OPENMP
-    omp_set_num_threads(opts.jobs);
-#endif
-
-#pragma omp parallel for
-    for (long n = 0; n < funcVec.size(); n++) {
-	ParseAPI::Function * func = funcVec[n];
-	doFunction(func);
-    }
+#pragma omp parallel  shared(funcVec)
+    {
+#pragma omp for  schedule(dynamic, 1)
+      for (long n = 0; n < funcVec.size(); n++) {
+	  ParseAPI::Function * func = funcVec[n];
+	  doFunction(func);
+      }
+    }  // end parallel
 
     if (opts.do_delete) {
 	if (opts.verbose) {
@@ -609,7 +635,8 @@ main(int argc, char **argv)
     }
 
     cout << "\ndone parsing: " << opts.filename << "\n"
-	 << "num threads: " << opts.jobs_parse << ", " << opts.jobs
+	 << "num threads: " << opts.jobs_symtab
+	 << ", " << opts.jobs_parse << ", " << opts.jobs
 	 << "  num funcs: " << funcVec.size() << "\n" << endl;
 
     if (opts.verbose) {
