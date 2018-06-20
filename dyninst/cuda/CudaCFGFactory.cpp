@@ -1,4 +1,6 @@
 #include "CudaCFGFactory.hpp"
+#include "CudaFunction.hpp"
+#include <iostream>
 
 namespace Dyninst {
 namespace ParseAPI {
@@ -9,32 +11,32 @@ Function *CudaCFGFactory::mkfunc(Address addr, FuncSource src,
   // find function by name
   for (auto *function : _functions) {
     if (function->name == name) {
-      Function *ret_func = new Function(addr, name, obj, region, isrc);
-      //ret_func->_cache_valid = true;
-      funcs_.add(*ret_func);
+      CudaFunction *ret_func = new CudaFunction(addr, name, obj, region, isrc);
 
       bool first_entry = true;
       for (auto *block : function->blocks) {
         Block *ret_block = NULL;
         if (_block_filter.find(block->id) == _block_filter.end()) {
           ret_block = new Block(obj, region, block->insts[0]->offset);
+          _block_filter[block->id] = ret_block;
           blocks_.add(*ret_block);
+          ret_func->add_block(ret_block);
         } else {
           ret_block = _block_filter[block->id];
         }
 
         if (first_entry) {
-          ret_func->setEntryBlock(ret_block);
+          ret_func->setEntry(ret_block);
           first_entry = false;
         }
-
-        //ret_func->add_block(ret_block);
 
         for (auto *target : block->targets) {
           Block *ret_target_block = NULL;
           if (_block_filter.find(target->block->id) == _block_filter.end()) {
             ret_target_block = new Block(obj, region, target->block->insts[0]->offset);
+            _block_filter[target->block->id] = ret_target_block;
             blocks_.add(*ret_target_block);
+            ret_func->add_block(ret_target_block);
           } else {
             ret_target_block = _block_filter[target->block->id];
           }
@@ -42,7 +44,8 @@ Function *CudaCFGFactory::mkfunc(Address addr, FuncSource src,
           Edge *ret_edge = NULL;
           if (target->type == CudaParse::CALL) {
             ret_edge = new Edge(ret_block, ret_target_block, CALL);
-            //ret_func->_call_edge_list.insert(ret_edge);
+          } else if (target->type = CudaParse::FALLTHROUGH) { 
+            ret_edge = new Edge(ret_block, ret_target_block, FALLTHROUGH);
           } else {  // TODO(Keren): Add more edge types
             ret_edge = new Edge(ret_block, ret_target_block, DIRECT);
           }

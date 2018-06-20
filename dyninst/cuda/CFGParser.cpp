@@ -1,5 +1,6 @@
 #include "CFGParser.hpp"
 #include <cctype>
+#include <iostream>
 
 namespace CudaParse {
 
@@ -79,16 +80,23 @@ void CFGParser::parse(const Graph &graph, std::vector<Function *> &functions) {
     unite_blocks(edge->target_id, edge->source_id);
     Block *target_block = block_map[edge->target_id];
     Block *source_block = block_map[edge->source_id];
+    
+    TargetType type = DIRECT;
     // Link blocks
     Inst *target_inst;
     for (auto inst : source_block->insts) {
       if (inst->port == edge->source_port[0]) {
-        source_block->targets.push_back(new Target(inst, target_block));
+        if (inst == source_block->insts.back()) {
+          type = FALLTHROUGH;
+        }
+        source_block->targets.push_back(new Target(inst, target_block, type));
       }
     }
     // Some edge may not have port information
     if (source_block->targets.size() == 0) {
-      source_block->targets.push_back(new Target(source_block->insts.back(), target_block));
+      Inst *inst = source_block->insts.back();
+      type = FALLTHROUGH;
+      source_block->targets.push_back(new Target(inst, target_block, type));
     }
   }
 

@@ -99,6 +99,7 @@
 #include "Fatbin.hpp"
 #include "InputFile.hpp"
 #include "RelocateCubin.hpp"
+#include "CudaCFGFactory.hpp"
 #include "CudaCodeSource.hpp"
 #include "GraphReader.hpp"
 #include "CFGParser.hpp"
@@ -134,7 +135,7 @@ public:
 	verbose = false;
 	do_delete = true;
 	do_memory = true;
-	do_instns = true;
+	do_instns = false;
 	do_inline = true;
 	do_linemap = true;
     }
@@ -564,22 +565,24 @@ main(int argc, char **argv)
 
 	CodeSource * code_src = NULL;
 	CodeObject * code_obj = NULL;
+  CFGFactory * cfg_fact = NULL;
 
 	if (cuda_file) {
-      std::string relocated_cubin = filename + ".relocated";
-      int fd = open(relocated_cubin.c_str(), O_WRONLY);
-      if (write(fd, elf_addr, elf_len) != elf_len) {
-          cout << "Write " << relocated_cubin << " to disk failed" << endl; 
-          continue;
-      }
-
+      //std::string relocated_cubin = filename + ".relocated";
+      //int fd = open(relocated_cubin.c_str(), O_CREAT|O_WRONLY|O_TRUNC, S_IRWXU);
+      //if (write(fd, elf_addr, elf_len) != elf_len) {
+      //    cout << "Write " << relocated_cubin << " to disk failed" << endl; 
+      //    continue;
+      //}
+      //close(fd);
       std::string relocated_dot = filename + ".dot";
-      std::string cmd = "nvdisasm -cfg -poff " + relocated_cubin + " > " + relocated_dot;
-      std::shared_ptr<FILE> pipe(popen(cmd.c_str(), "r"), pclose);
-      if (!pipe) {
+      std::string cmd = "nvdisasm -cfg -poff " + filename + " > " + relocated_dot;
+      FILE *output = popen(cmd.c_str(), "r");
+      if (!output) {
           cout << "Dump " << relocated_dot << " to disk failed" << endl; 
           continue;
       }
+      pclose(output);
 
       CudaParse::GraphReader graph_reader(relocated_dot);
       CudaParse::Graph graph;
@@ -588,16 +591,12 @@ main(int argc, char **argv)
       std::vector<CudaParse::Function *> functions;
       cfg_parser.parse(graph, functions);
 
+      cfg_fact = new CudaCFGFactory(functions);
       code_src = new CudaCodeSource(functions); 
-      std::vector< Hint > hints = code_src->hints();
-      for (auto hint : hints) {
-          cout << hint._name << std::endl;
-      }
-      //code_obj = new CodeObject(code_src);
+      code_obj = new CodeObject(code_src, cfg_fact);
       for (auto *function : functions) {
         delete function;
       }
-      continue;
 	}
 	else {
 	    code_src = new SymtabCodeSource(the_symtab);
@@ -643,14 +642,17 @@ main(int argc, char **argv)
 	printTime("parse: ", &tv_symtab, &tv_parse, &ru_symtab, &ru_parse);
 	printTime("total: ", &tv_init, &tv_fini, &ru_init, &ru_fini);
 
+  if (cfg_fact != NULL) {
+      delete cfg_fact;
+  }
 	if (code_obj != NULL) {
 	    delete code_obj;
 	}
 	if (code_src != NULL) {
-      if (cuda_file) {
-	        delete (CudaCodeSource *)code_src;
+      if (cuda_file == true) {
+          delete (CudaCodeSource *)code_src;
       } else {
-	        delete (SymtabCodeSource *)code_src;
+          delete (SymtabCodeSource *)code_src;
       }
 	}
 

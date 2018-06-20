@@ -7,6 +7,7 @@
 #include <sstream>
 #include <unordered_set>
 #include <vector>
+#include <iostream>
 
 namespace CudaParse {
 
@@ -54,8 +55,9 @@ struct Inst {
 struct Block;
 
 enum TargetType {
-  CALL = 0,
-  DIRECT = 1
+  DIRECT = 0,
+  FALLTHROUGH = 1,
+  CALL = 2
 };
 
 struct Target {
@@ -63,7 +65,7 @@ struct Target {
   Block *block;
   TargetType type; 
 
-  Target(Inst *inst, Block *block) : inst(inst), block(block) {}
+  Target(Inst *inst, Block *block, TargetType type) : inst(inst), block(block), type(type) {}
 
   bool operator<(const Target &other) const {
     return this->inst->offset < other.inst->offset;
