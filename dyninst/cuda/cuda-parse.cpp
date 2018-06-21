@@ -568,13 +568,13 @@ main(int argc, char **argv)
   CFGFactory * cfg_fact = NULL;
 
 	if (cuda_file) {
-      //std::string relocated_cubin = filename + ".relocated";
-      //int fd = open(relocated_cubin.c_str(), O_CREAT|O_WRONLY|O_TRUNC, S_IRWXU);
-      //if (write(fd, elf_addr, elf_len) != elf_len) {
-      //    cout << "Write " << relocated_cubin << " to disk failed" << endl; 
-      //    continue;
-      //}
-      //close(fd);
+      std::string relocated_cubin = filename + ".relocated";
+      int fd = open(relocated_cubin.c_str(), O_CREAT|O_WRONLY|O_TRUNC, S_IRWXU);
+      if (write(fd, elf_addr, elf_len) != elf_len) {
+          cout << "Write " << relocated_cubin << " to disk failed" << endl; 
+          continue;
+      }
+      close(fd);
       std::string relocated_dot = filename + ".dot";
       std::string cmd = "nvdisasm -cfg -poff " + filename + " > " + relocated_dot;
       FILE *output = popen(cmd.c_str(), "r");
@@ -594,6 +594,7 @@ main(int argc, char **argv)
       cfg_fact = new CudaCFGFactory(functions);
       code_src = new CudaCodeSource(functions); 
       code_obj = new CodeObject(code_src, cfg_fact);
+      code_obj->parse();
       for (auto *function : functions) {
         delete function;
       }
