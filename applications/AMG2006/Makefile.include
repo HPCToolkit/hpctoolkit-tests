@@ -7,7 +7,9 @@
 #EHEADER***********************************************************************
 
 # set the compiler here
-CC = mpicc
+#CC = mpicc
+#CC = /projects/pkgs/openmpi-3.0.1/bin/mpicc
+CC =/projects/pkgs/mpich-3.2/bin/mpicc
 #CC = mpxlc
 
 # set compile flags here

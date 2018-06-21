@@ -24,7 +24,7 @@ CC = mpicc
 # Use 64-bit integers for global variables (needed for large problems
 #	with more than 2 billion variables)
 #   add '-DHYPRE_LONG_LONG'  to 'INCLUDE_CFLAGS'
-INCLUDE_CFLAGS = -O2 -DTIMER_USE_MPI -DHYPRE_USING_OPENMP -DHYPRE_LONG_LONG -DHYPRE_NO_GLOBAL_PARTITION -fopenmp
+INCLUDE_CFLAGS = -g -O2 -DTIMER_USE_MPI -DHYPRE_USING_OPENMP -DHYPRE_LONG_LONG -DHYPRE_NO_GLOBAL_PARTITION -fopenmp
 
 # set link flags here
 #INCLUDE_LFLAGS = -lm -openmp -qsmp
