@@ -52,15 +52,23 @@ main(int argc, char **argv)
   int n;
 
   if (argc < 2 || sscanf(argv[1], "%d", &n) < 1)
-    n = 19;
+    n = 14;
 
   printf("n = %d, ans = %ld\n", n, fib(n));
   
+  // first attempt
   std::promise<int> p;
   auto pr = p.get_future();
   fib_thread(n, std::move(p));
   
-  printf("c++ thread version = %ld\n", pr.get());
+  printf("1. c++ thread version = %ld\n", pr.get());
+
+  // second attempt
+  std::promise<int> q;
+  auto pq = q.get_future();
+  fib_thread(n, std::move(q));
+  
+  printf("2. c++ thread version = %ld\n", pq.get());
 
   return (0);
 }
