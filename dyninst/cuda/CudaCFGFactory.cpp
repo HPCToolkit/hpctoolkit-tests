@@ -15,9 +15,14 @@ Function *CudaCFGFactory::mkfunc(Address addr, FuncSource src,
 
       bool first_entry = true;
       for (auto *block : function->blocks) {
-        Block *ret_block = NULL;
+        CudaBlock *ret_block = NULL;
         if (_block_filter.find(block->id) == _block_filter.end()) {
-          ret_block = new Block(obj, region, block->insts[0]->offset);
+          ret_block = new CudaBlock(obj, region, block->insts[0]->offset);
+          std::vector<Offset> inst_offsets;
+          for (auto *inst : block->insts) {
+            inst_offsets.push_back(inst->offset);
+          }
+          ret_block->set_inst_offsets(inst_offsets);
           _block_filter[block->id] = ret_block;
           blocks_.add(*ret_block);
           ret_func->add_block(ret_block);
@@ -31,9 +36,14 @@ Function *CudaCFGFactory::mkfunc(Address addr, FuncSource src,
         }
 
         for (auto *target : block->targets) {
-          Block *ret_target_block = NULL;
+          CudaBlock *ret_target_block = NULL;
           if (_block_filter.find(target->block->id) == _block_filter.end()) {
-            ret_target_block = new Block(obj, region, target->block->insts[0]->offset);
+            ret_target_block = new CudaBlock(obj, region, target->block->insts[0]->offset);
+            std::vector<Offset> inst_offsets;
+            for (auto *inst : target->block->insts) {
+              inst_offsets.push_back(inst->offset);
+            }
+            ret_target_block->set_inst_offsets(inst_offsets);
             _block_filter[target->block->id] = ret_target_block;
             blocks_.add(*ret_target_block);
             ret_func->add_block(ret_target_block);

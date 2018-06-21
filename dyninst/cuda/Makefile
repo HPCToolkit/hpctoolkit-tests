@@ -47,7 +47,8 @@ RPATH =  \
 PROG = cuda-parse
 
 OBJS = cuda-parse.o  ElfHelper.o  Fatbin.o  InputFile.o  RelocateCubin.o  \
-			 CudaCFGFactory.o  CudaCodeSource.o  CudaFunction.o  GraphReader.o  CFGParser.o
+			 CudaCFGFactory.o  CudaCodeSource.o  CudaFunction.o  CudaBlock.o \
+			 GraphReader.o  CFGParser.o
 
 all: $(PROG)
 

@@ -4,6 +4,7 @@
 #include <CFGFactory.h>
 #include <unordered_map>
 
+#include "CudaBlock.hpp"
 #include "DotCFG.hpp"
 
 namespace Dyninst {
@@ -21,7 +22,7 @@ class PARSER_EXPORT CudaCFGFactory : public CFGFactory {
 
  private:
    std::vector<CudaParse::Function *> &_functions;
-   std::unordered_map<size_t, Block *> _block_filter; 
+   std::unordered_map<size_t, CudaBlock *> _block_filter; 
 };
 
 }

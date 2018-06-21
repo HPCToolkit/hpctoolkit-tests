@@ -100,6 +100,8 @@
 #include "InputFile.hpp"
 #include "RelocateCubin.hpp"
 #include "CudaCFGFactory.hpp"
+#include "CudaFunction.hpp"
+#include "CudaBlock.hpp"
 #include "CudaCodeSource.hpp"
 #include "GraphReader.hpp"
 #include "CFGParser.hpp"
@@ -135,7 +137,7 @@ public:
 	verbose = false;
 	do_delete = true;
 	do_memory = true;
-	do_instns = false;
+	do_instns = true;
 	do_inline = true;
 	do_linemap = true;
     }
@@ -203,6 +205,7 @@ doInstruction(Offset addr, FuncInfo & finfo)
 
 	if (! svec.empty()) {
 	    int line = svec[0]->getLine();
+      std::cout << line << std::endl;
 
 	    // line = 0 means unknown
 	    if (line > 0) {
@@ -255,13 +258,20 @@ doBlock(Block * block, BlockSet & visited, FuncInfo & finfo)
 
     // split basic block into instructions (optional)
     if (opts.do_instns) {
- 	Dyninst::ParseAPI::Block::Insns imap;
-	block->getInsns(imap);
+ 	//Dyninst::ParseAPI::Block::Insns imap;
+	//block->getInsns(imap);
 
-	for (auto iit = imap.begin(); iit != imap.end(); ++iit) {
-	    Offset addr = iit->first;
-	    doInstruction(addr, finfo);
-	}
+	//for (auto iit = imap.begin(); iit != imap.end(); ++iit) {
+	//    Offset addr = iit->first;
+	//    doInstruction(addr, finfo);
+	//}
+      std::vector<Offset> offsets = ((CudaBlock *)block)->get_inst_offsets();
+
+      for (auto it = offsets.begin(); it != offsets.end(); ++it) {
+        Offset addr = *it;
+        std::cout << "Line mapping: " << addr << "->";
+        doInstruction(addr, finfo);
+      }
     }
 }
 
@@ -584,12 +594,28 @@ main(int argc, char **argv)
       }
       pclose(output);
 
+      // parse dot cfg
       CudaParse::GraphReader graph_reader(relocated_dot);
       CudaParse::Graph graph;
       graph_reader.read(graph);
       CudaParse::CFGParser cfg_parser;
       std::vector<CudaParse::Function *> functions;
       cfg_parser.parse(graph, functions);
+
+      // relocate instructions
+      std::vector<Symbol *> symbols;
+      the_symtab->getAllSymbols(symbols);
+      for (auto *symbol : symbols) {
+        for (auto *function : functions) {
+          if (function->name == symbol->getMangledName()) {
+            for (auto *block : function->blocks) {
+              for (auto *inst : block->insts) {
+                inst->offset += symbol->getOffset();
+              }
+            }
+          }
+        }
+      }
 
       cfg_fact = new CudaCFGFactory(functions);
       code_src = new CudaCodeSource(functions); 
