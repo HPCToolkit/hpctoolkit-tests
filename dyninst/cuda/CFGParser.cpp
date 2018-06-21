@@ -23,6 +23,29 @@ void CFGParser::parse_inst_strings(
 }
 
 
+void CFGParser::parse_calls(std::vector<Function *> &functions) {
+  for (auto function : functions) {
+    for (auto block : function->blocks) {
+      for (auto inst : block->insts) {
+        if (inst->opcode.find("CALL") != std::string::npos || // sm_70
+          inst->opcode.find("CAL") != std::string::npos) { // sm_60
+          std::string &operand = inst->operands[0];
+          std::string callee = operand.substr(2, operand.size() - 4);
+          Function *callee_function;
+          for (auto ff : functions) {
+            if (ff->name == callee) {
+              callee_function = ff;
+              break;
+            }
+          }
+          block->targets.push_back(new Target(inst, callee_function->blocks[0], CALL));
+        }
+      }
+    }
+  }
+}
+
+
 size_t CFGParser::find_block_parent(size_t node) {
   size_t parent = _block_parent[node];
   size_t graph_size = _block_parent.size();
@@ -86,7 +109,11 @@ void CFGParser::parse(const Graph &graph, std::vector<Function *> &functions) {
     Inst *target_inst;
     for (auto inst : source_block->insts) {
       if (inst->port == edge->source_port[0]) {
-        if (inst == source_block->insts.back()) {
+        if (inst->predicate.find("!@") != std::string::npos) {
+          type = COND_TAKEN;
+        } else if (inst->predicate.find("@") != std::string::npos) {
+          type = COND_NOT_TAKEN;
+        } else if (inst == source_block->insts.back()) {
           type = FALLTHROUGH;
         }
         source_block->targets.push_back(new Target(inst, target_block, type));
@@ -99,15 +126,6 @@ void CFGParser::parse(const Graph &graph, std::vector<Function *> &functions) {
       source_block->targets.push_back(new Target(inst, target_block, type));
     }
   }
-
-  //for (auto block : blocks) {
-  //  std::cout << "From: " << std::endl;
-  //  std::cout << block->name << std::endl;
-  //  std::cout << "Target: " << std::endl;
-  //  for (auto target : block->targets) {
-  //    std::cout << target->block->name << std::endl;
-  //  }
-  //}
 
   // Build functions
   size_t function_id = 0;
@@ -130,6 +148,8 @@ void CFGParser::parse(const Graph &graph, std::vector<Function *> &functions) {
       functions.push_back(function);
     }
   }
+
+  parse_calls(functions);
 }
 
 }

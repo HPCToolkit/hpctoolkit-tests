@@ -18,6 +18,8 @@ class CFGParser {
   ~CFGParser() {};
 
  private:
+  void parse_calls(std::vector<Function *> &functions);
+
   void parse_inst_strings(const std::string &label, std::deque<std::string> &inst_strings);
 
   size_t find_block_parent(size_t node);

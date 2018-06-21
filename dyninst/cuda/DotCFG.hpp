@@ -1,27 +1,35 @@
 #ifndef _DOT_CFG_H_
 #define _DOT_CFG_H_
 
+#include <algorithm>
 #include <iostream>
 #include <regex>
-#include <string>
 #include <sstream>
+#include <string>
 #include <unordered_set>
 #include <vector>
-#include <iostream>
 
 namespace CudaParse {
 
 struct Inst {
   int offset;
+  bool dual;
+  std::string predicate;
   std::string opcode;
   std::string port;
   std::vector<std::string> operands;
 
-  Inst(std::string &inst_str) {
-    if (inst_str[0] == '/') {  // Dual issue
+  Inst(std::string &inst_str) : offset(0), dual(false) {
+    if (inst_str.find("{") != std::string::npos) {  // Dual first
+      auto pos = inst_str.find("{");
+      inst_str.replace(pos, 1, " ");
+      dual = true;
+    }
+    if (inst_str.find("}") != std::string::npos) {  // Dual second
       inst_str = inst_str.substr(2);
       auto pos = inst_str.find("*/");
-      inst_str.replace(pos, 2, "");
+      inst_str.replace(pos, 2, ":");
+      dual = true;
     }
     std::istringstream iss(inst_str);
     std::string s;
@@ -35,12 +43,23 @@ struct Inst {
       ss << std::hex << s;
       ss >> offset;
       if (std::getline(iss, s, ':')) {
+        s.erase(std::remove(s.begin(), s.end(), '{'), s.end());
+        s.erase(std::remove(s.begin(), s.end(), '}'), s.end());
+        s.erase(std::remove(s.begin(), s.end(), ';'), s.end());
+        s.erase(std::remove(s.begin(), s.end(), ','), s.end());
+        s.erase(std::remove(s.begin(), s.end(), '('), s.end());
+        s.erase(std::remove(s.begin(), s.end(), ')'), s.end());
+        s.erase(std::remove(s.begin(), s.end(), '`'), s.end());
         std::regex e("\\\\ ");
         iss = std::istringstream(std::regex_replace(s, e, "\n"));
         while (std::getline(iss, s)) {
           if (s != "") {
             if (opcode == "") {
-              opcode = s;
+              if (s.find("@") != std::string::npos) {
+                predicate = s;
+              } else {
+                opcode = s;
+              }
             } else {
               operands.push_back(s);
             }
@@ -55,9 +74,11 @@ struct Inst {
 struct Block;
 
 enum TargetType {
-  DIRECT = 0,
-  FALLTHROUGH = 1,
-  CALL = 2
+  CALL = 0,
+  COND_TAKEN,
+  COND_NOT_TAKEN,
+  FALLTHROUGH,
+  DIRECT
 };
 
 struct Target {
