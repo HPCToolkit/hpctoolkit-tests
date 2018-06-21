@@ -30,10 +30,9 @@ void CFGParser::parse_calls(std::vector<Function *> &functions) {
         if (inst->opcode.find("CALL") != std::string::npos || // sm_70
           inst->opcode.find("CAL") != std::string::npos) { // sm_60
           std::string &operand = inst->operands[0];
-          std::string callee = operand.substr(2, operand.size() - 4);
           Function *callee_function;
           for (auto ff : functions) {
-            if (ff->name == callee) {
+            if (ff->name == operand) {
               callee_function = ff;
               break;
             }
