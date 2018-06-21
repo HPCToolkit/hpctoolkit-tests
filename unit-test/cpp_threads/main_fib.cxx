@@ -49,26 +49,24 @@
 int
 main(int argc, char **argv)
 {
-  int n;
+  int n, iter;
 
   if (argc < 2 || sscanf(argv[1], "%d", &n) < 1)
-    n = 14;
+    n = 10;
+
+  if (argc < 3 || sscanf(argv[2], "%d", &iter) < 1)
+    iter = 10;
 
   printf("n = %d, ans = %ld\n", n, fib(n));
   
-  // first attempt
-  std::promise<int> p;
-  auto pr = p.get_future();
-  fib_thread(n, std::move(p));
+  // loop of parallel fib
+  for(int i=0; i<iter; i++) {
+    std::promise<int> p;
+    auto pr = p.get_future();
+    fib_thread(n, std::move(p));
   
-  printf("1. c++ thread version = %ld\n", pr.get());
-
-  // second attempt
-  std::promise<int> q;
-  auto pq = q.get_future();
-  fib_thread(n, std::move(q));
-  
-  printf("2. c++ thread version = %ld\n", pq.get());
+    printf("%d. c++ thread version = %ld\n", i, pr.get());
+  }
 
   return (0);
 }
