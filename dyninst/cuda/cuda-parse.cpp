@@ -258,19 +258,13 @@ doBlock(Block * block, BlockSet & visited, FuncInfo & finfo)
 
     // split basic block into instructions (optional)
     if (opts.do_instns) {
- 	//Dyninst::ParseAPI::Block::Insns imap;
-	//block->getInsns(imap);
+      Dyninst::ParseAPI::Block::Insns imap;
+      block->getInsns(imap);
 
-	//for (auto iit = imap.begin(); iit != imap.end(); ++iit) {
-	//    Offset addr = iit->first;
-	//    doInstruction(addr, finfo);
-	//}
-      std::vector<Offset> offsets = ((CudaBlock *)block)->get_inst_offsets();
-
-      for (auto it = offsets.begin(); it != offsets.end(); ++it) {
-        Offset addr = *it;
-        std::cout << "Line mapping: " << addr << "->";
-        doInstruction(addr, finfo);
+      for (auto iit = imap.begin(); iit != imap.end(); ++iit) {
+          Offset addr = iit->first;
+          std::cout << "Line mapping: " << addr << "->";
+          doInstruction(addr, finfo);
       }
     }
 }
