@@ -2,11 +2,15 @@
 #include <future>
 
 void
-fib_thread(int n, std::promise<int> &&result) {
-  int i, j;
-  if (n<2)
+fib_thread(int n, std::promise<int> &&result) 
+{
+  if (n<2) {
+    // waiting loop
+    for(int i=0; i<32767; i++)
+      for(int j=0; j<3276; j++) {}
+
     result.set_value(1);
-  else {
+  } else {
     std::promise<int> p, q;
     auto pr = p.get_future();
     auto pq = q.get_future();

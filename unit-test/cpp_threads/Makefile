@@ -1,10 +1,11 @@
 all: main_fib.cxx  fib.h  fib_thread.cxx
-	g++ -g -O2 main_fib.cxx fib_thread.cxx -I. -o fib  -lpthread
+	g++ -g -O0 main_fib.cxx fib_thread.cxx -I. -o fib  -lpthread
 
 check:
-	hpcrun -e CYCLES -e INSTRUCTIONS -dd LINUX_PERF -t ./fib 44
-	hpcstruct fib
-	hpcprof -S fib.hpcstruct  hpctoolkit-fib-measurements/
+	time ./fib 8 3
+	time hpcrun -dd LINUX_PERF -e cycles -t ./fib 8 3
+	time hpcstruct fib
+	time mpirun -np 4 hpcprof-mpi -S fib.hpcstruct  hpctoolkit-fib-measurements/
 
 clean:
 	rm *.o
