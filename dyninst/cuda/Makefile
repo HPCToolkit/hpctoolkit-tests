@@ -24,7 +24,8 @@ DEFS = -DDYNINST_USE_CUDA
 INCL =  \
     -I$(DYNINST)/include  \
     -I$(BOOST)/include  \
-    -I$(ELFUTILS)/include
+    -I$(ELFUTILS)/include  \
+    -I$(ELFUTILS)/include/elfutils
 
 LIBS =  \
     -L$(DYNINST)/lib  \
@@ -48,7 +49,7 @@ PROG = cuda-parse
 
 OBJS = cuda-parse.o  ElfHelper.o  Fatbin.o  InputFile.o  RelocateCubin.o  \
 			 CudaCFGFactory.o  CudaCodeSource.o  CudaFunction.o  CudaBlock.o \
-			 GraphReader.o  CFGParser.o
+			 ReadCubinLineMap.o  LineMapping.o  GraphReader.o  CFGParser.o
 
 all: $(PROG)
 

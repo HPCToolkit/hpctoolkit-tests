@@ -24,14 +24,14 @@ void CFGParser::parse_inst_strings(
 
 
 void CFGParser::parse_calls(std::vector<Function *> &functions) {
-  for (auto function : functions) {
-    for (auto block : function->blocks) {
-      for (auto inst : block->insts) {
+  for (auto *function : functions) {
+    for (auto *block : function->blocks) {
+      for (auto *inst : block->insts) {
         if (inst->opcode.find("CALL") != std::string::npos || // sm_70
           inst->opcode.find("CAL") != std::string::npos) { // sm_60
           std::string &operand = inst->operands[0];
           Function *callee_function;
-          for (auto ff : functions) {
+          for (auto *ff : functions) {
             if (ff->name == operand) {
               callee_function = ff;
               break;
@@ -83,12 +83,12 @@ void CFGParser::parse(const Graph &graph, std::vector<Function *> &functions) {
   }
 
   // Parse every vertex to build blocks
-  for (auto vertex : graph.vertices) {
+  for (auto *vertex : graph.vertices) {
     Block *block = new Block(vertex->id, vertex->name);
 
     std::deque<std::string> inst_strings;
     parse_inst_strings(vertex->label, inst_strings);
-    for (auto inst_string : inst_strings) {
+    for (auto &inst_string : inst_strings) {
       block->insts.push_back(new Inst(inst_string));
     }
 
@@ -97,7 +97,7 @@ void CFGParser::parse(const Graph &graph, std::vector<Function *> &functions) {
   }
 
   // Parse every edge to build block relations
-  for (auto edge : graph.edges) {
+  for (auto *edge : graph.edges) {
     // Find toppest block
     unite_blocks(edge->target_id, edge->source_id);
     Block *target_block = block_map[edge->target_id];
@@ -106,7 +106,7 @@ void CFGParser::parse(const Graph &graph, std::vector<Function *> &functions) {
     TargetType type = DIRECT;
     // Link blocks
     Inst *target_inst;
-    for (auto inst : source_block->insts) {
+    for (auto *inst : source_block->insts) {
       if (inst->port == edge->source_port[0]) {
         if (inst->predicate.find("!@") != std::string::npos) {
           type = COND_TAKEN;
@@ -128,7 +128,7 @@ void CFGParser::parse(const Graph &graph, std::vector<Function *> &functions) {
 
   // Build functions
   size_t function_id = 0;
-  for (auto block : blocks) {
+  for (auto *block : blocks) {
     // Sort block targets according to inst offset
     std::sort(block->targets.begin(), block->targets.end(), compare_target_ptr);
     if (find_block_parent(block->id) == block->id) {
@@ -138,7 +138,7 @@ void CFGParser::parse(const Graph &graph, std::vector<Function *> &functions) {
       }
       Function *function = new Function(function_id, block_map[block->id]->name);
       ++function_id;
-      for (auto bb : blocks) {
+      for (auto *bb : blocks) {
         if (find_block_parent(bb->id) == block->id) {
           function->blocks.push_back(bb);
         }

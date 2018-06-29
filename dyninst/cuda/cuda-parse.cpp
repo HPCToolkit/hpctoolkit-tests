@@ -87,6 +87,8 @@
 #include <vector>
 #include <mutex>
 
+#include <libdw.h>
+
 #include <CFG.h>
 #include <CodeObject.h>
 #include <CodeSource.h>
@@ -103,8 +105,11 @@
 #include "CudaFunction.hpp"
 #include "CudaBlock.hpp"
 #include "CudaCodeSource.hpp"
-#include "GraphReader.hpp"
 #include "CFGParser.hpp"
+#include "GraphReader.hpp"
+#include "Line.hpp"
+#include "ReadCubinLineMap.hpp"
+#include "LineMapping.hpp"
 
 #define MAX_VMA  0xfffffffffffffff0
 
@@ -501,6 +506,60 @@ printTime(const char *label, struct timeval *tv_prev, struct timeval *tv_now,
 
 //----------------------------------------------------------------------
 
+bool
+dumpRelocatedCubin(const std::string &relocated_cubin, char *elf_addr, size_t elf_len) {
+    int fd = open(relocated_cubin.c_str(), O_CREAT|O_WRONLY|O_TRUNC, S_IRWXU);
+    if (write(fd, elf_addr, elf_len) != elf_len) {
+        return false;
+    }
+    close(fd);
+    return true;
+}
+
+//----------------------------------------------------------------------
+
+bool
+dumpRelocatedDot(const std::string &filename, const std::string &relocated_dot) {
+    std::string cmd = "nvdisasm -cfg -poff " + filename + " > " + relocated_dot;
+    FILE *output = popen(cmd.c_str(), "r");
+    if (!output) {
+      cout << "Dump " << relocated_dot << " to disk failed" << endl; 
+      return false;
+    }
+    pclose(output);
+    return true;
+}
+
+
+void
+parseDotCFG(const std::string &filename, std::vector<CudaParse::Function *> &functions) {
+    std::string relocated_dot = filename + ".dot";
+    CudaParse::GraphReader graph_reader(relocated_dot);
+    CudaParse::Graph graph;
+    graph_reader.read(graph);
+    CudaParse::CFGParser cfg_parser;
+    cfg_parser.parse(graph, functions);
+}
+
+
+void
+relocateInstructions(std::vector<CudaParse::Function *> &functions) {
+  std::vector<Symbol *> symbols;
+  the_symtab->getAllSymbols(symbols);
+  for (auto *symbol : symbols) {
+    for (auto *function : functions) {
+      if (function->name == symbol->getMangledName()) {
+        for (auto *block : function->blocks) {
+          for (auto *inst : block->insts) {
+            inst->offset += symbol->getOffset();
+          }
+        }
+      }
+    }
+  }
+}
+
+
 int
 main(int argc, char **argv)
 {
@@ -554,15 +613,8 @@ main(int argc, char **argv)
 	}
 	bool cuda_file = (the_symtab->getArchitecture() == Dyninst::Arch_cuda);
 
-	the_symtab->parseTypesNow();
-	the_symtab->parseFunctionRanges();
-
-	vector <Module *> modVec;
-	the_symtab->getAllModules(modVec);
-
-	for (auto mit = modVec.begin(); mit != modVec.end(); ++mit) {
-	    (*mit)->parseLineInformation();
-	}
+  the_symtab->parseTypesNow();
+  the_symtab->parseFunctionRanges();
 
 	gettimeofday(&tv_symtab, NULL);
 	getrusage(RUSAGE_SELF, &ru_symtab);
@@ -572,44 +624,36 @@ main(int argc, char **argv)
   CFGFactory * cfg_fact = NULL;
 
 	if (cuda_file) {
-      std::string relocated_cubin = filename + ".relocated";
-      int fd = open(relocated_cubin.c_str(), O_CREAT|O_WRONLY|O_TRUNC, S_IRWXU);
-      if (write(fd, elf_addr, elf_len) != elf_len) {
-          cout << "Write " << relocated_cubin << " to disk failed" << endl; 
-          continue;
-      }
-      close(fd);
       std::string relocated_dot = filename + ".dot";
-      std::string cmd = "nvdisasm -cfg -poff " + filename + " > " + relocated_dot;
-      FILE *output = popen(cmd.c_str(), "r");
-      if (!output) {
-          cout << "Dump " << relocated_dot << " to disk failed" << endl; 
+      std::string relocated_cubin = filename + ".relocated";
+
+      if (!dumpRelocatedCubin(relocated_cubin, elf_addr, elf_len)) {
+          cout << "Write " + relocated_cubin + " to disk failed" << endl; 
           continue;
       }
-      pclose(output);
 
-      // parse dot cfg
-      CudaParse::GraphReader graph_reader(relocated_dot);
-      CudaParse::Graph graph;
-      graph_reader.read(graph);
-      CudaParse::CFGParser cfg_parser;
+      if (!dumpRelocatedDot(filename, relocated_dot)) {
+          cout << "Write " + relocated_dot + " to disk failed" << endl; 
+          continue;
+      }
+
+      // Parse dot cfg
       std::vector<CudaParse::Function *> functions;
-      cfg_parser.parse(graph, functions);
+      parseDotCFG(filename, functions);
 
       // relocate instructions
-      std::vector<Symbol *> symbols;
-      the_symtab->getAllSymbols(symbols);
-      for (auto *symbol : symbols) {
-        for (auto *function : functions) {
-          if (function->name == symbol->getMangledName()) {
-            for (auto *block : function->blocks) {
-              for (auto *inst : block->insts) {
-                inst->offset += symbol->getOffset();
-              }
-            }
-          }
+      relocateInstructions(functions);
+
+      LineMapping line_mapping;
+
+      if (line_mapping.read_lines(relocated_cubin)) {
+        if (!line_mapping.insert_lines(the_symtab)) {
+          cout << "Insert " + relocated_cubin + " line_mapping failed" << endl; 
+          continue;
         }
       }
+
+      // Record line-mapping
 
       cfg_fact = new CudaCFGFactory(functions);
       code_src = new CudaCodeSource(functions); 
@@ -620,6 +664,11 @@ main(int argc, char **argv)
       }
 	}
 	else {
+      vector <Module *> modVec;
+      the_symtab->getAllModules(modVec);
+      for (auto mit = modVec.begin(); mit != modVec.end(); ++mit) {
+        (*mit)->parseLineInformation();
+      }
 	    code_src = new SymtabCodeSource(the_symtab);
 	    code_obj = new CodeObject(code_src);
 	    code_obj->parse();
