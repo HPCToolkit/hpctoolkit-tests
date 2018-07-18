@@ -33,6 +33,8 @@
 //
 //  This program is a proxy for hpcstruct with openmp threads.
 //
+//  Now modified to be a proxy for CodeObject and parse for CUDA.
+//
 //  Iterate through the same hierarchy of functions, loops, blocks,
 //  instructions, inline call sequences and line map info, and collect
 //  (mostly) the same raw data that hpcstruct would collect.  But
@@ -52,7 +54,6 @@
 //  Options:
 //   -j  num      use <num> openmp threads
 //   -jp num      use <num> threads for ParseAPI::parse()
-//   -js num      use <num> threads for Symtab methods
 //   -p, -v       print verbose function information
 //   -D           disable delete CodeObject and Symtab CodeSource
 //   -M           disable read() file in memory before openFile()
@@ -62,7 +63,7 @@
 //   -h, --help   display usage message and exit
 //
 
-#define MY_USE_OPENMP  1
+#define MY_USE_OPENMP  0
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -94,6 +95,11 @@
 #include <Instruction.h>
 #include <LineInformation.h>
 
+#include "ElfHelper.hpp"
+#include "Fatbin.hpp"
+#include "InputFile.hpp"
+#include "RelocateCubin.hpp"
+
 #define MAX_VMA  0xfffffffffffffff0
 
 using namespace Dyninst;
@@ -105,16 +111,12 @@ using namespace std;
 typedef map <Block *, bool> BlockSet;
 typedef unsigned int uint;
 
-Symtab * the_symtab = NULL;
-mutex mtx;
-
 // Command-line options
 class Options {
 public:
     const char *filename;
     int   jobs;
     int   jobs_parse;
-    int   jobs_symtab;
     bool  verbose;
     bool  do_delete;
     bool  do_memory;
@@ -126,7 +128,6 @@ public:
 	filename = NULL;
 	jobs = -1;
 	jobs_parse = -1;
-	jobs_symtab = -1;
 	verbose = false;
 	do_delete = true;
 	do_memory = true;
@@ -136,7 +137,9 @@ public:
     }
 };
 
-Options opts;
+static Symtab * the_symtab = NULL;
+static Options opts;
+static mutex mtx;
 
 //----------------------------------------------------------------------
 
@@ -159,9 +162,9 @@ public:
     int  min_line;
     int  max_line;
 
-    FuncInfo(ParseAPI::Function * func) {
-	name = func->name();
-	addr = func->addr();
+    FuncInfo(ParseAPI::Function * func = NULL) {
+	name = (func != NULL) ? func->name() : "";
+	addr = (func != NULL) ? func->addr() : 0;
 	min_vma = MAX_VMA;
 	max_vma = 0;
 	num_loops = 0;
@@ -296,7 +299,7 @@ doLoopTree(LoopTreeNode * ltnode, BlockSet & visited, FuncInfo & finfo)
 //----------------------------------------------------------------------
 
 void
-doFunction(ParseAPI::Function * func)
+doFunction(ParseAPI::Function * func, FuncInfo & summary)
 {
     FuncInfo finfo(func);
 
@@ -326,24 +329,34 @@ doFunction(ParseAPI::Function * func)
 	}
     }
 
+    mtx.lock();
+
+    // info for this function
     if (opts.verbose) {
-      // print info for this function
-      mtx.lock();
-
-      cout << "\n--------------------------------------------------\n"
-	   << hex
-	   << "func:  0x" << finfo.addr << "  " << finfo.name << "\n"
-	   << "0x" << finfo.min_vma << "--0x" << finfo.max_vma << "\n"
-	   << dec
-	   << "loops:  " << finfo.num_loops
-	   << "  blocks:  " << finfo.num_blocks
-	   << "  instns:  " << finfo.num_instns << "\n"
-	   << "inline depth:  " << finfo.max_depth
-	   << "  line range:  " << finfo.min_line << "--" << finfo.max_line
-	   << "\n";
-
-      mtx.unlock();
+	cout << "\n--------------------------------------------------\n"
+	     << hex
+	     << "func:  0x" << finfo.addr << "  " << finfo.name << "\n"
+	     << "0x" << finfo.min_vma << "--0x" << finfo.max_vma << "\n"
+	     << dec
+	     << "loops:  " << finfo.num_loops
+	     << "  blocks:  " << finfo.num_blocks
+	     << "  instns:  " << finfo.num_instns << "\n"
+	     << "inline depth:  " << finfo.max_depth
+	     << "  line range:  " << finfo.min_line << "--" << finfo.max_line
+	     << "\n";
     }
+
+    // summary of all functions
+    summary.min_vma = std::min(summary.min_vma, finfo.min_vma);
+    summary.max_vma = std::max(summary.max_vma, finfo.max_vma);
+    summary.num_loops  += finfo.num_loops;
+    summary.num_blocks += finfo.num_blocks;
+    summary.num_instns += finfo.num_instns;
+    summary.max_depth = std::max(summary.max_depth, finfo.max_depth);
+    summary.min_line =  std::min(summary.min_line,  finfo.min_line);
+    summary.max_line =  std::max(summary.max_line,  finfo.max_line);
+
+    mtx.unlock();
 }
 
 //----------------------------------------------------------------------
@@ -406,16 +419,6 @@ getOptions(int argc, char **argv, Options & opts)
 	    }
 	    n += 2;
 	}
-	else if (arg == "-js") {
-	    if (n + 1 >= argc) {
-	        usage("missing arg for -js");
-	    }
-	    opts.jobs_symtab = atoi(argv[n + 1]);
-	    if (opts.jobs_symtab <= 0) {
-	        errx(1, "bad arg for -js: %s", argv[n + 1]);
-	    }
-	    n += 2;
-	}
 	else if (arg == "-p" || arg == "-v") {
 	    opts.verbose = true;
 	    n++;
@@ -466,15 +469,9 @@ getOptions(int argc, char **argv, Options & opts)
     if (opts.jobs_parse < 1) {
         opts.jobs_parse = opts.jobs;
     }
-
-    // if -js is not specified, then use -jp
-    if (opts.jobs_symtab < 1) {
-	opts.jobs_symtab = opts.jobs_parse;
-    }
 #else
     opts.jobs = 1;
     opts.jobs_parse = 1;
-    opts.jobs_symtab = 1;
 #endif
 }
 
@@ -503,150 +500,129 @@ main(int argc, char **argv)
     struct rusage  ru_init, ru_symtab, ru_parse, ru_fini;
 
     getOptions(argc, argv, opts);
+    string filename = opts.filename;
 
-    cout << "begin open: " << opts.filename << "\n"
-	 << "symtab threads: " << opts.jobs_symtab
-	 << "  parse threads: " << opts.jobs_parse
-	 << "  struct threads: " << opts.jobs << "\n" << endl;
-
-    gettimeofday(&tv_init, NULL);
-    getrusage(RUSAGE_SELF, &ru_init);
-    printTime("init:  ", &tv_init, &tv_init, &ru_init, &ru_init);
-
-#if MY_USE_OPENMP
-    omp_set_num_threads(opts.jobs_symtab);
-#endif
-
-    char * mem_image = NULL;
-
-    if (opts.do_memory) {
-	//
-	// read filename into memory and pass to Symtab as a memory
-	// buffer.  this is what hpcstruct does.
-	//
-	int fd = open(opts.filename, O_RDONLY);
-	if (fd < 0) {
-	    err(1, "unable to open: %s", opts.filename);
-	}
-
-	struct stat sb;
-	int ret = fstat(fd, &sb);
-	if (ret != 0) {
-	    err(1, "unable to fstat: %s", opts.filename);
-	}
-	size_t file_size = sb.st_size;
-
-	mem_image = (char *) malloc(file_size);
-	if (mem_image == NULL) {
-	    err(1, "unable to malloc %ld bytes", file_size);
-	}
-
-	ssize_t len = read(fd, mem_image, file_size);
-	if (len < file_size) {
-	    err(1, "read only %ld out of %ld bytes", len, file_size);
-	}
-	close(fd);
-
-	if (! Symtab::openFile(the_symtab, mem_image, file_size, opts.filename)) {
-	    errx(1, "Symtab::openFile (in memory) failed: %s", opts.filename);
-	}
-    }
-    else {
-	//
-	// let Symtab read the file itself (-M option).
-	//
-	if (! Symtab::openFile(the_symtab, opts.filename)) {
-	    errx(1, "Symtab::openFile (on disk) failed: %s", opts.filename);
-	}
-    }
-
-    the_symtab->parseTypesNow();
-    the_symtab->parseFunctionRanges();
-
-    vector <Module *> modVec;
-    the_symtab->getAllModules(modVec);
-
-#pragma omp parallel  shared(modVec)
-    {
-#pragma omp for  schedule(dynamic, 1)
-      for (uint i = 0; i < modVec.size(); i++) {
-	  modVec[i]->parseLineInformation();
-      }
-    }  // end parallel
-
-    gettimeofday(&tv_symtab, NULL);
-    getrusage(RUSAGE_SELF, &ru_symtab);
-    printTime("symtab:", &tv_init, &tv_symtab, &ru_init, &ru_symtab);
-
-#if MY_USE_OPENMP
-    omp_set_num_threads(opts.jobs_parse);
-#endif
-
-    SymtabCodeSource * code_src = new SymtabCodeSource(the_symtab);
-    CodeObject * code_obj = new CodeObject(code_src);
-
-    code_obj->parse();
-
-    gettimeofday(&tv_parse, NULL);
-    getrusage(RUSAGE_SELF, &ru_parse);
-    printTime("parse: ", &tv_symtab, &tv_parse, &ru_symtab, &ru_parse);
+    cout << "begin open: " << filename << "\n"
+	 << "parse threads: " << opts.jobs_parse
+	 << "  struct threads: " << opts.jobs << "\n";
 
 #if MY_USE_OPENMP
     omp_set_num_threads(opts.jobs);
 #endif
 
-    // get function list and convert to vector.  cilk_for requires a
-    // random access container.
-
-    const CodeObject::funclist & funcList = code_obj->funcs();
-    vector <ParseAPI::Function *> funcVec;
-
-    for (auto fit = funcList.begin(); fit != funcList.end(); ++fit) {
-	ParseAPI::Function * func = *fit;
-	funcVec.push_back(func);
+    InputFile inputFile;
+    if (! inputFile.openFile(filename)) {
+        errx(1, "InputFile::inputFile() failed: %s", opts.filename);
     }
 
-#pragma omp parallel  shared(funcVec)
-    {
-#pragma omp for  schedule(dynamic, 1)
-      for (long n = 0; n < funcVec.size(); n++) {
-	  ParseAPI::Function * func = funcVec[n];
-	  doFunction(func);
-      }
-    }  // end parallel
+    ElfFileVector * elfFileVector = inputFile.fileVector();
+    if (elfFileVector == NULL || elfFileVector->empty()) {
+        errx(1, "elfFileVector is empty");
+    }
 
-    if (opts.do_delete) {
-	if (opts.verbose) {
-	    cout << "\ndelete CodeObject, CodeSource, close Symtab ..." << endl;
+    for (uint i = 0; i < elfFileVector->size(); i++) {
+        ElfFile * elfFile = (*elfFileVector)[i];
+	string elf_name = elfFile->getFileName();
+	char * elf_addr = elfFile->getMemory();
+	size_t elf_len = elfFile->getLength();
+
+	cout << "\n------------------------------------------------------------\n"
+	     << "Elf File:  " << elf_name << "\n"
+	     << "length:    0x" << hex << elf_len << dec << "  (" << elf_len << ")\n"
+	     << "------------------------------------------------------------"
+	     << endl;
+
+	gettimeofday(&tv_init, NULL);
+	getrusage(RUSAGE_SELF, &ru_init);
+
+#if MY_USE_OPENMP
+	omp_set_num_threads(opts.jobs_parse);
+#endif
+
+	Symtab::openFile(the_symtab, elf_addr, elf_len, elf_name);
+	if (the_symtab == NULL) {
+	    cout << "warning: Symtab::openFile() failed\n";
+	    continue;
 	}
-	delete code_obj;
-	delete code_src;
-	Symtab::closeSymtab(the_symtab);
-	if (opts.do_memory) {
-	    free(mem_image);
+	bool cuda_file = (the_symtab->getArchitecture() == Dyninst::Arch_cuda);
+
+	the_symtab->parseTypesNow();
+	the_symtab->parseFunctionRanges();
+
+	vector <Module *> modVec;
+	the_symtab->getAllModules(modVec);
+
+	for (auto mit = modVec.begin(); mit != modVec.end(); ++mit) {
+	    (*mit)->parseLineInformation();
 	}
-    }
 
-    gettimeofday(&tv_fini, NULL);
-    getrusage(RUSAGE_SELF, &ru_fini);
-    if (! opts.verbose) {
-	printTime("struct:", &tv_parse, &tv_fini, &ru_parse, &ru_fini);
-	printTime("total: ", &tv_init, &tv_fini, &ru_init, &ru_fini);
-    }
+	gettimeofday(&tv_symtab, NULL);
+	getrusage(RUSAGE_SELF, &ru_symtab);
 
-    cout << "\ndone parsing: " << opts.filename << "\n"
-	 << "num threads: " << opts.jobs_symtab
-	 << ", " << opts.jobs_parse << ", " << opts.jobs
-	 << "  num funcs: " << funcVec.size() << "\n" << endl;
+	SymtabCodeSource * code_src = NULL;
+	CodeObject * code_obj = NULL;
 
-    if (opts.verbose) {
+	if (cuda_file) {
+	    //
+	    // FIXME: write a replacement for CodeObject and parse()
+	    //
+	    cout << "\nskip cuda:  " << elf_name << endl;
+	    continue;
+	}
+	else {
+	    code_src = new SymtabCodeSource(the_symtab);
+	    code_obj = new CodeObject(code_src);
+	    code_obj->parse();
+	}
+
+	gettimeofday(&tv_parse, NULL);
+	getrusage(RUSAGE_SELF, &ru_parse);
+
+#if MY_USE_OPENMP
+	omp_set_num_threads(opts.jobs);
+#endif
+
+	const CodeObject::funclist & funcList = code_obj->funcs();
+	vector <ParseAPI::Function *> funcVec;
+	FuncInfo summary;
+
+	for (auto fit = funcList.begin(); fit != funcList.end(); ++fit) {
+	    ParseAPI::Function * func = *fit;
+	    funcVec.push_back(func);
+	}
+
+#pragma omp parallel for
+	for (long n = 0; n < funcVec.size(); n++) {
+	    ParseAPI::Function * func = funcVec[n];
+	    doFunction(func, summary);
+	}
+
+	gettimeofday(&tv_fini, NULL);
+	getrusage(RUSAGE_SELF, &ru_fini);
+	    
+	cout << "\nsummary:  funcs:  " << funcList.size() << "\n"
+	     << "loops:  " << summary.num_loops
+	     << "  blocks:  " << summary.num_blocks
+	     << "  instns:  " << summary.num_instns << "\n"
+	     << "inline depth:  " << summary.max_depth
+	     << "  line range:  " << summary.min_line << "--" << summary.max_line
+	     << "\n\n";
+
 	printTime("init:  ", &tv_init, &tv_init, &ru_init, &ru_init);
 	printTime("symtab:", &tv_init, &tv_symtab, &ru_init, &ru_symtab);
 	printTime("parse: ", &tv_symtab, &tv_parse, &ru_symtab, &ru_parse);
-	printTime("struct:", &tv_parse, &tv_fini, &ru_parse, &ru_fini);
 	printTime("total: ", &tv_init, &tv_fini, &ru_init, &ru_fini);
-	cout << endl;
+
+	if (code_obj != NULL) {
+	    delete code_obj;
+	}
+	if (code_src != NULL) {
+	    delete code_src;
+	}
+	Symtab::closeSymtab(the_symtab);
     }
+
+    cout << endl;
 
     return 0;
 }

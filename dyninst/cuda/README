@@ -1,0 +1,66 @@
+--------------------
+Notes on cuda-parse
+--------------------
+
+Cuda-parse.cpp is a proxy for constructing a Dyninst CodeObject that
+hpcstruct can use to iterate over functions, loops, blocks, edges and
+instructions.
+
+Dyninst constructs the CodeObject with:
+
+   SymtabCodeSource * code_src = new SymtabCodeSource(the_symtab);
+   CodeObject * code_obj = new CodeObject(code_src);
+   code_obj->parse();
+
+The task here is to write a replacement for the above sequence that
+produces a CodeObject that works with the unit test on cuda binaries.
+
+----------------------------------------
+
+To build cuda-parse:
+
+   1. Build Dyninst prereqs.
+   2. Build Dyninst.
+   3. Build the unit test.
+
+I build Dyninst and its prereqs using spack and scripts in my
+satellite spack repository.  Normally, I build the prereqs (boost,
+elfutils, libiberty) from spack and then build dyninst with the
+mk-dyninst.sh script.
+
+   git clone https://github.com/mwkrentel/myrepo
+   git clone https://github.com/spack/spack
+
+To build cuda-parse, copy Make.template to Makefile, fill in the
+paths, and run make.  I've written the Makefile to use rpath, so you
+probably don't need to set LD_LIBRARY_PATH.
+
+----------------------------------------
+
+Notes:
+
+1. Try to do new work in separate files and leave ElfHelper, Fatbin,
+InputFile and RelocateCubin alone as much as possible.
+
+2. You're not really allowed to change how cuda-parse iterates through
+the function list, loop tree, basic blocks, edges and instructions.
+That's the point of the test, to construct Dyninst objects that
+support hpcstuct's use case.  Except, of course, for a replacement for
+CodeObject::parse().
+
+3. If you need to change ElfHelper, RelocateCubin, etc, discuss this
+with John.
+
+4. I'm not sure of the best repo and branch for Dyninst.  Check with
+John on this.
+
+5. Be sure to test on both clang and nvidia binaries, with and without
+"full" debug info (inline sequences) and also regular binaries, and
+both x86 and power.
+
+6. There are still some things hpcstruct uses from CodeObject that are
+not yet in the unit test: Function::callEdges(), Block::targets(),
+Loop::getLoopBasicBlocks(), etc.  I'll try to add these in a bit.
+
+Mark Krentel
+

@@ -1,0 +1,64 @@
+#
+#  Make.template
+#
+#  Copy this file to Makefile, fill in the paths and then run make.
+#  Assume we're using new elfutils with libdw and not libdwarf.
+#
+
+CXX = g++
+CXXFLAGS = -g -O -std=c++11
+
+DYNINST = 
+BOOST = 
+ELFUTILS = 
+BZIP = 
+LZMA = 
+ZLIB = 
+
+#------------------------------------------------------------
+
+#  Hopefully, don't need to change anything below here.
+
+DEFS = -DDYNINST_USE_CUDA
+
+INCL =  \
+    -I$(DYNINST)/include  \
+    -I$(BOOST)/include  \
+    -I$(ELFUTILS)/include
+
+LIBS =  \
+    -L$(DYNINST)/lib  \
+    -lparseAPI  -linstructionAPI  -lsymtabAPI  -ldynDwarf  -ldynElf  -lcommon  \
+    -L$(BOOST)/lib  \
+    -lboost_atomic  -lboost_chrono  -lboost_date_time  -lboost_filesystem  \
+    -lboost_system  -lboost_thread  \
+    -L$(ELFUTILS)/lib  -lelf  -ldw  \
+    -ldl
+
+RPATH =  \
+    -Wl,-rpath,$(DYNINST)/lib  \
+    -Wl,-rpath,$(BOOST)/lib  \
+    -Wl,-rpath,$(ELFUTILS)/lib  \
+    -Wl,-rpath,$(BZIP)/lib  \
+    -Wl,-rpath,$(LZMA)/lib  \
+    -Wl,-rpath,$(ZLIB)/lib
+
+
+PROG = cuda-parse
+
+OBJS = cuda-parse.o  ElfHelper.o  Fatbin.o  InputFile.o  RelocateCubin.o
+
+all: $(PROG)
+
+$(PROG): $(OBJS)
+	$(CXX)  -o $@  $(OBJS)  $(LIBS)  $(RPATH)
+
+%.o: %.cpp
+	$(CXX)  -c -o $@  $(CXXFLAGS)  $(DEFS)  $(INCL)  $<
+
+clean:
+	rm -f  *.o
+
+vclean: clean
+	rm -f  $(PROG)
+
