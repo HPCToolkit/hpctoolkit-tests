@@ -8,8 +8,8 @@ LULESH_EXEC = lulesh2.0
 MPI_INC = /opt/local/include/openmpi
 MPI_LIB = /opt/local/lib
 
-SERCXX = g++ -DUSE_MPI=0
 MPICXX = mpicxx -DUSE_MPI=1
+SERCXX = g++ -DUSE_MPI=0
 CXX = $(MPICXX)
 
 SOURCES2.0 = \
@@ -20,9 +20,11 @@ SOURCES2.0 = \
 	lulesh-init.cc
 OBJECTS2.0 = $(SOURCES2.0:.cc=.o)
 
+OMPT_LIBPATH=/home/johnmc/pkgs-src/openmp/INSTALL/lib
+OMPT=-L$(OMPT_LIBPATH) -Wl,-rpath=$(OMPT_LIBPATH) -lomp
 #Default build suggestions with OpenMP for g++
 CXXFLAGS = -g -O3 -fopenmp -I. -Wall
-LDFLAGS = -g -O3 -fopenmp
+LDFLAGS = -g -O3 -fopenmp $(OMPT)
 
 #Below are reasonable default flags for a serial build
 #CXXFLAGS = -g -O3 -I. -Wall
