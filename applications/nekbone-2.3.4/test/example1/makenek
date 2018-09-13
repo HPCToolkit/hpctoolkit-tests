@@ -6,10 +6,10 @@
 SOURCE_ROOT="../../src"
 
 # Fortran compiler
-F77="mpixlf77_r -qsmp=omp -qnosave"
+F77="mpif90"
 
 # C compiler
-CC="mpixlc_r -qsmp=omp"
+CC="mpif90"
 
 # pre-processor symbol list 
 # (set PPLIST=? to get a list of available symbols)
@@ -28,14 +28,14 @@ PPLIST="TIMERS"
 #USR="foo.o"
 
 # linking flags
-#USR_LFLAGS="-L/usr/lib/ -lfoo"
+USR_LFLAGS="-fopenmp"
 
 # generic compiler flags
-#G="-g"
+G="-g"
 
 # optimization flags
-OPT_FLAGS_STD="-O3"
-OPT_FLAGS_MAG="-O3"
+OPT_FLAGS_STD="-O3 -g"
+OPT_FLAGS_MAG="-O3 -g"
 
 ###############################################################################
 # DONT'T TOUCH WHAT FOLLOWS !!!

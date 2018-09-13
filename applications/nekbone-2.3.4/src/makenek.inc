@@ -147,6 +147,8 @@ fi
 case $F77comp in
   *pgf*)        P="-r8 -Mpreprocess"
                ;;
+  *mpif90*)   P="-fcray-pointer -fdefault-real-8 -x f77-cpp-input"
+               ;;
   *gfortran*)   P="-fcray-pointer -fdefault-real-8 -x f77-cpp-input"
                ;;
   *ifort*)      P="-r8 -fpconstant -fpp"
