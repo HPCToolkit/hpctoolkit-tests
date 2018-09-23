@@ -41,7 +41,7 @@
 //  output should be deterministic.
 //
 //  This program tests if ParseAPI produces deterministic results for
-//  functions, loops and blocks.
+//  functions, loops, blocks and edges.
 //
 //  Build me as a Dyninst application with -fopenmp, or else use
 //  scripts from github.com/mwkrentel/myrepo.
@@ -101,8 +101,12 @@ typedef unsigned long VMA;
 typedef unsigned int uint;
 
 typedef vector <Block *> BlockVec;
+typedef vector <Edge *>  EdgeVec;
 typedef map <Block *, bool> BlockSet;
+typedef map <Edge *, bool>  EdgeSet;
 typedef map <VMA, VMA> RangeSet;
+
+bool inRangeSet(RangeSet &, VMA);
 
 Symtab * the_symtab = NULL;
 
@@ -133,14 +137,16 @@ BlockLessThan(Block * b1, Block * b2)
     return b1->start() < b2->start();
 }
 
-// Sort Edges first by target address (usually all the same), and then
-// by source address.
+// Sort Edges by source address, then target address and finally by
+// type (there are cond branches with both targets the same).
 static bool
 EdgeLessThan(Edge * e1, Edge * e2)
 {
-    return (e1->trg()->start() < e2->trg()->start())
-	|| (e1->trg()->start() == e2->trg()->start()
-	    && e1->src()->last() < e2->src()->last());
+    if (e1->src()->last() < e2->src()->last()) { return true; }
+    if (e1->src()->last() > e2->src()->last()) { return false; }
+    if (e1->trg()->start() < e2->trg()->start()) { return true; }
+    if (e1->trg()->start() > e2->trg()->start()) { return false; }
+    return e1->type() < e2->type();
 }
 
 // Sort Functions by entry address, low to high.
@@ -190,11 +196,82 @@ void
 printBlocks(BlockVec & bvec)
 {
     for (auto bit = bvec.begin(); bit != bvec.end(); ++bit) {
-	VMA start = (*bit)->start();
-	VMA end = (*bit)->end();
+	Block * block = *bit;
+	VMA start = block->start();
+	VMA end = block->end();
+
+	map <Offset, Instruction> imap;
+	block->getInsns(imap);
 
 	cout << "0x" << hex << start << "--0x" << end << dec
-	     << "  (" << end - start << ")\n";
+	     << "  (" << imap.size() << ", " << end - start << ")\n";
+    }
+}
+
+//----------------------------------------------------------------------
+
+static string
+edgeType(int type)
+{
+    if (type == ParseAPI::CALL)           { return "call"; }
+    if (type == ParseAPI::COND_TAKEN)     { return "cond-take"; }
+    if (type == ParseAPI::COND_NOT_TAKEN) { return "cond-not"; }
+    if (type == ParseAPI::INDIRECT)       { return "indirect"; }
+    if (type == ParseAPI::DIRECT)         { return "direct"; }
+    if (type == ParseAPI::FALLTHROUGH)    { return "fallthr"; }
+    if (type == ParseAPI::CATCH)          { return "catch"; }
+    if (type == ParseAPI::CALL_FT)        { return "call-ft"; }
+    if (type == ParseAPI::RET)            { return "return"; }
+    return "unknown";
+}
+
+// bvec is a set of exclusive blocks, and inclRange is the range set
+// including subloops.  'incoming' means the edge source is outside
+// inclRange, and 'outgoing' means the target is outside the range.
+//
+void
+printEdges(BlockVec & bvec, RangeSet & inclRange)
+{
+    EdgeSet edgeSet;
+
+    // put source and target edges into a map by 'Edge *' to eliminate
+    // duplicates
+    for (auto bit = bvec.begin(); bit != bvec.end(); ++bit) {
+	const Block::edgelist & inEdges = (*bit)->sources();
+	const Block::edgelist & outEdges = (*bit)->targets();
+
+	for (auto eit = inEdges.begin(); eit != inEdges.end(); ++eit) {
+	    edgeSet[*eit] = true;
+	}
+	for (auto eit = outEdges.begin(); eit != outEdges.end(); ++eit) {
+	    edgeSet[*eit] = true;
+	}
+    }
+
+    // copy edges to a vector and sort
+    EdgeVec edgeVec;
+
+    for (auto eit = edgeSet.begin(); eit != edgeSet.end(); ++eit) {
+	edgeVec.push_back(eit->first);
+    }
+
+    std::sort(edgeVec.begin(), edgeVec.end(), EdgeLessThan);
+
+    // print edges and attributes
+    for (auto eit = edgeVec.begin(); eit != edgeVec.end(); ++eit) {
+	Edge * edge = *eit;
+	VMA src = edge->src()->last();
+	VMA targ = edge->trg()->start();
+
+	cout << "0x" << hex << src << " -> 0x" << targ << dec
+	     << "  " << edgeType(edge->type());
+
+	if (edge->sinkEdge()) { cout << "  sink"; }
+	if (edge->interproc()) { cout << "  interproc"; }
+	if (! inRangeSet(inclRange, src)) { cout << "  incoming"; }
+	if (! inRangeSet(inclRange, targ)) { cout << "  outgoing"; }
+
+	cout << "\n";
     }
 }
 
@@ -222,6 +299,24 @@ printRangeSet(RangeSet & rset)
     if (num_on_line > 0) { cout << "\n"; }
 
     cout << dec;
+}
+
+//----------------------------------------------------------------------
+
+// Returns: true if vma is contained in rset.
+bool
+inRangeSet(RangeSet & rset, VMA vma)
+{
+    auto rit = rset.upper_bound(vma);
+
+    if (rit != rset.begin()) {
+	auto prev = rit;  --prev;
+
+	if (prev->first <= vma && vma < prev->second) {
+	    return true;
+	}
+    }
+    return false;
 }
 
 //----------------------------------------------------------------------
@@ -335,6 +430,9 @@ doLoop(Loop * loop, BlockSet & visited, string name)
 
     cout << "\nloop blocks:\n";
     printBlocks(exclBlocks);
+
+    cout << "\nloop edges:\n";
+    printEdges(exclBlocks, inclRange);
 }
 
 //----------------------------------------------------------------------
@@ -436,6 +534,9 @@ doFunction(ParseAPI::Function * func)
 
     cout << "\nfunc blocks:\n";
     printBlocks(exclBlocks);
+
+    cout << "\nfunc edges:\n";
+    printEdges(exclBlocks, inclRange);
 }
 
 //----------------------------------------------------------------------
