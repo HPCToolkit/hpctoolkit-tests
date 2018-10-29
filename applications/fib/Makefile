@@ -4,7 +4,7 @@ fib: fib.c
 	$(COMPILE_FIB)
 
 fib-static:
-	hpclink $(COMPILE_FIB)
+	hpclink gcc -g -static -fopenmp -o fib fib.c
 
 clean:
 	/bin/rm -rf fib hpctoolkit-* *.hpcstruct
