@@ -1,0 +1,29 @@
+#------------------------------------------------------------------------------
+# provide paths for two representative versions of gcc
+#  gcc4: this version uses an old version of the LLVM gomp wrappers
+#  gcc5+: this version uses a new version of the LLVM gomp wrappers
+#------------------------------------------------------------------------------
+ifeq ($(V),4)
+GCC_PATH=/usr/bin
+else
+V=5+
+GCC_PATH=/sw/summit/gcc/6.4.0/bin
+endif
+
+GCC=$(GCC_PATH)/gcc
+GPP=$(GCC_PATH)/g++
+
+#------------------------------------------------------------------------------
+# provide paths for hpctoolkit and its GUIs
+#  gcc4: this version uses an old version of the LLVM gomp wrappers
+#  gcc5+: this version uses a new version of the LLVM gomp wrappers
+#------------------------------------------------------------------------------
+HPCT=/gpfs/alpine/csc322/world-shared/pkgs-src/hpctoolkit/hpctoolkit-install/bin
+VIEWERS=/gpfs/alpine/csc322/world-shared/pkgs/hpctoolkit-gui/bin
+
+
+#------------------------------------------------------------------------------
+# provide a path for an LLVM openmp installation with OMPT support
+#------------------------------------------------------------------------------
+HPCT=/gpfs/alpine/csc322/world-shared/pkgs-src/hpctoolkit/hpctoolkit-install/bin
+OLIB=/gpfs/alpine/csc322/world-shared/pkgs/llvm-openmp/lib
