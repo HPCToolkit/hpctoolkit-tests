@@ -57,6 +57,7 @@
 //
 
 #define MY_USE_OPENMP  1
+#define USE_INSTRUCTION_PTR  0
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -127,6 +128,13 @@ public:
 };
 
 Options opts;
+
+set <Block *> oldBlocks;
+
+long num_loops = 0;
+long num_blocks = 0;
+long num_edges = 0;
+long num_instns = 0;
 
 //----------------------------------------------------------------------
 
@@ -200,8 +208,27 @@ printBlocks(BlockVec & bvec)
 	VMA start = block->start();
 	VMA end = block->end();
 
+#if USE_INSTRUCTION_PTR
+	map <Offset, Instruction::Ptr> imap;
+#else
 	map <Offset, Instruction> imap;
+#endif
 	block->getInsns(imap);
+
+	// count the blocks, instructions and outgoing edges the first
+	// time we see a given block.  most blocks belong to only one
+	// function.  the others we save in oldBlocks and only count
+	// them once.
+
+	int num_funcs = block->containingFuncs();
+	if (num_funcs == 1 || oldBlocks.find(block) == oldBlocks.end()) {
+	    const Block::edgelist & outEdges = block->targets();
+
+	    num_blocks++;
+	    num_instns += imap.size();
+	    num_edges += outEdges.size();
+	    if (num_funcs > 1) { oldBlocks.insert(block); }
+	}
 
 	cout << "0x" << hex << start << "--0x" << end << dec
 	     << "  (" << imap.size() << ", " << end - start << ")\n";
@@ -370,6 +397,8 @@ doLoop(Loop * loop, BlockSet & visited, string name)
     // entry blocks
     BlockVec entBlocks;
     int num_ents = loop->getLoopEntries(entBlocks);
+
+    num_loops++;
 
     cout << "\n----------------------------------------\n"
 	 << "loop:  0x" << hex << LoopMinEntryAddr(loop) << dec
@@ -639,11 +668,11 @@ printTime(const char *label, struct timeval *tv_prev, struct timeval *tv_now,
     float delta = (float)(tv_now->tv_sec - tv_prev->tv_sec)
         + ((float)(tv_now->tv_usec - tv_prev->tv_usec))/1000000.0;
 
-    printf("%s  %8.1f sec  %8ld meg  %8ld meg", label, delta,
+    fprintf(stderr, "%s  %8.1f sec  %9ld meg  %9ld meg", label, delta,
            (ru_now->ru_maxrss - ru_prev->ru_maxrss)/1024,
            ru_now->ru_maxrss/1024);
 
-    cout << endl;
+    cerr << endl;
 }
 
 //----------------------------------------------------------------------
@@ -719,13 +748,35 @@ main(int argc, char **argv)
 	doFunction(func);
     }
 
-    cout << "\nnum funcs:  " << funcVec.size() << "\n" << endl;
-
     gettimeofday(&tv_fini, NULL);
     getrusage(RUSAGE_SELF, &ru_fini);
 
+    long num_funcs  = funcVec.size();
+
+    long size_funcs  = sizeof(ParseAPI::Function);
+    long size_loops  = sizeof(Loop);
+    long size_blocks = sizeof(Block);
+    long size_edges  = sizeof(Edge);
+    long size_instns = sizeof(Instruction);
+
+    long prod_funcs  = num_funcs * size_funcs;
+    long prod_loops  = num_loops * size_loops;
+    long prod_blocks = num_blocks * size_blocks;
+    long prod_edges  = num_edges * size_edges;
+    long prod_instns = num_instns * size_instns;
+
+    long total = prod_funcs + prod_loops + prod_blocks + prod_edges
+	+ prod_instns;
+    long meg = 1024 * 1024;
+
+    printf("\nnum funcs:  %12ld\nnum loops:  %12ld\nnum blocks: %12ld\n"
+	   "num edges:  %12ld\nnum instns: %12ld\n",
+	   num_funcs, num_loops, num_blocks, num_edges, num_instns);
+
+    cout << endl;
+
     if (opts.verbose) {
-        cout << "file: " << opts.filename << "\n"
+        cerr << "file: " << opts.filename << "\n"
 	     << "symtab threads: " << opts.jobs_symtab
 	     << "  parse threads: " << opts.jobs_parse << "\n\n";
 
@@ -734,7 +785,23 @@ main(int argc, char **argv)
 	printTime("parse: ", &tv_symtab, &tv_parse, &ru_symtab, &ru_parse);
 	printTime("struct:", &tv_parse, &tv_fini, &ru_parse, &ru_fini);
 	printTime("total: ", &tv_init, &tv_fini, &ru_init, &ru_fini);
-	cout << endl;
+	cerr << endl;
+
+	fprintf(stderr,
+		"funcs:  %13ld    sizeof: %7ld    total: %8ld meg\n"
+		"loops:  %13ld    sizeof: %7ld    total: %8ld meg\n"
+		"blocks: %13ld    sizeof: %7ld    total: %8ld meg\n"
+		"edges:  %13ld    sizeof: %7ld    total: %8ld meg\n"
+		"instns: %13ld    sizeof: %7ld    total: %8ld meg\n"
+		"total:  %9ld meg\n",
+		num_funcs, size_funcs, prod_funcs / meg,
+		num_loops, size_loops, prod_loops / meg,
+		num_blocks, size_blocks, prod_blocks / meg,
+		num_edges, size_edges, prod_edges / meg,
+		num_instns, size_instns, prod_instns / meg,
+		total / meg);
+
+	cerr << endl;
     }
 
     return 0;
