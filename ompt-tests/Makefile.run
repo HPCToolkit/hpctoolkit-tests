@@ -1,0 +1,49 @@
+
+EXEC=$(TEST)-$(V)$(T).exe
+
+#---------------------------------------------------------
+# implicit target
+#---------------------------------------------------------
+
+all: compile struct run analyze view clean
+
+
+#---------------------------------------------------------
+# explicit user facing targets
+#---------------------------------------------------------
+
+compile:  $(TEST).c
+	$(GCC) -g -fopenmp -o $(EXEC) $(TEST).c $(OMPT_LIBS)
+
+struct: $(EXEC)
+	$(HPCT)/hpcstruct ./$(EXEC)
+
+run: $(EXEC)
+	$(HPCT)/hpcrun $(TRACING) -o hpctoolkit-$(EXEC)-ompt-measurements ./$(EXEC)
+
+analyze: $(EXEC).hpcstruct hpctoolkit-$(EXEC)-ompt-measurements
+	$(HPCT)/hpcprof -S $(EXEC).hpcstruct hpctoolkit-$(EXEC)-ompt-measurements
+
+view: hpctoolkit-$(EXEC)-ompt-database
+	$(VIEWERS)/hpcviewer  hpctoolkit-$(EXEC)-ompt-database
+
+clean:
+	/bin/rm -f $(EXEC) $(EXEC).hpcstruct
+	/bin/rm -rf hpctoolkit-$(EXEC)-ompt-database  hpctoolkit-$(EXEC)-ompt-measurements  
+
+goals:
+	@echo supported goals: compile run analyze view clean goals
+	@echo specify a goal with G=goal
+
+
+#---------------------------------------------------------
+# underlying targets
+#---------------------------------------------------------
+
+$(EXEC): compile
+
+$(EXEC).hpcstruct: struct
+
+hpctoolkit-$(EXEC)-ompt-measurements: run
+
+hpctoolkit-$(EXEC)-ompt-database: analyze

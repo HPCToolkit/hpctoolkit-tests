@@ -1,0 +1,3 @@
+#!/bin/bash
+n=3
+for ((i=$n ; i; i--)) do let w=($n-$i+1); echo $w of $n; hpcrun ./$1; done
