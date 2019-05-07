@@ -5,12 +5,11 @@ ifndef GCC
 GCC=`which gcc`
 endif
 
-ifndef GXX
-GCC=`which g++`
-endif
-
 #tell the compiler to bind to the openmp library in the path specified by OLIB 
-OMPT_LIBS=-L$(OLIB) -Wl,-rpath=$(OLIB) -lomp
+ifdef OMP
+#OMPT_LIBS=-I $(OMP)/include -L$(OMP)/lib -Wl,-rpath=$(OMP)/lib -lomp
+OMPT_LIBS=-I$(OMP)/include -L$(OMP)/lib -lomp
+endif
 
 #build without echoing current directory with each recursive invocation of make
 MAKE=make --no-print-directory
