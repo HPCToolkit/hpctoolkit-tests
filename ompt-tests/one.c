@@ -1,27 +1,32 @@
+#include <stdio.h>
 #include <omp.h>
 #include <stdio.h>
 
 #define NTHREADS 4 
 #define N 100000000
 
-void
+int
 loop
 (
   void
 )
 {
-  int j;
+  volatile int j;
   for(j = 0; j < N; j += 2) j--;
+  return j;
 }
 
 
-void
+int
 p1()
 {
-#pragma omp parallel num_threads(NTHREADS)
+  int sum;
+#pragma omp parallel num_threads(NTHREADS) reduction(+:sum)
   {
-    loop();
+    int val = loop();
+    sum += val;
   }
+  return sum;
 }
 
 int
@@ -31,6 +36,6 @@ main
   char **argv
 )
 {
-  p1();
+  printf("sum = %d\n", p1());
   return 0;
 }

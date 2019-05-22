@@ -1,28 +1,15 @@
-PTH=/home/johnmc/spack/opt/spack/linux-rhel7-x86_64/gcc-4.8.5/gcc-7.3.0-2bfpv2u6zl5wux44mswawrkpzh2fillo/bin
+include config
 
-ifeq ($(V),4)
-PTH=/usr/bin
-else
-V=5+
-PTH=/opt/apps/software/Core/GCCcore/6.4.0/bin
-PTH=/home/johnmc/spack/opt/spack/linux-rhel7-x86_64/gcc-4.8.5/gcc-7.3.0-2bfpv2u6zl5wux44mswawrkpzh2fillo/bin
-
+# guess versions of gcc if none specified
+ifndef GCC
+GCC=`which gcc`
 endif
 
-GCC=$(PTH)/gcc
-GPP=$(PTH)/g++
-
-HPCT=/home/johnmc/pkgs-src/openmp-5.0/hpctoolkit-vladimir/hpctoolkit-install/bin
-
-VIEWERS=/home/johnmc/pkgs/hpctoolkit/bin
-VIEWERS=/projects/pkgs/hpctoolkit-viewers/bin
-
-# llvm-openmp mirror
-OLIB=/home/johnmc/pkgs-src/llvm-openmp-5/openmp-install/lib
-OLIB=/home/johnmc/pkgs-src/openmp-5.0/openmp/openmp-install/lib
-
 #tell the compiler to bind to the openmp library in the path specified by OLIB 
-OMPT_LIBS=-L$(OLIB) -Wl,-rpath=$(OLIB) -lomp
+ifdef OMP
+#OMPT_LIBS=-I $(OMP)/include -L$(OMP)/lib -Wl,-rpath=$(OMP)/lib -lomp
+OMPT_LIBS=-I$(OMP)/include -L$(OMP)/lib -lomp
+endif
 
 #build without echoing current directory with each recursive invocation of make
 MAKE=make --no-print-directory

@@ -1,0 +1,56 @@
+#------------------------------------------------------------------------------
+# provide a path for an LLVM openmp installation with OMPT support
+#------------------------------------------------------------------------------
+LLVM_OMP=/gpfs/wolf/gen124/world-shared/hpctoolkit/pkgs/llvm-openmp
+OMP=$(LLVM_OMP)
+
+#------------------------------------------------------------------------------
+# provide paths for two representative versions of gcc
+#  gcc4: this version uses an old version of the LLVM gomp wrappers
+#  gcc5+: this version uses a new version of the LLVM gomp wrappers
+#------------------------------------------------------------------------------
+ifeq ($(V),4)
+GCC_PATH=/usr/bin
+GCC=$(GCC_PATH)/gcc
+endif
+
+ifeq ($(V),8)
+GCC_PATH=/sw/ascent/gcc/8.1.1/bin
+GCC=$(GCC_PATH)/gcc
+OLIB=
+endif
+
+ifeq ($(V),clang)
+GCC_PATH=/sw/ascent/llvm/1.0-20190225/bin
+OLIB=$(LLVM_OMP)
+GCC=$(GCC_PATH)/clang
+endif
+
+ifeq ($(V),ibmclang)
+GCC_PATH=/sw/ascent/llvm/1.0-20190225/bin
+OMP=/gpfs/wolf/gen124/world-shared/hpctoolkit/pkgs/ibm-lomp-ompt-tier3
+GCC=$(GCC_PATH)/clang
+endif
+
+ifeq ($(V),xl)
+GCC_PATH=/sw/ascent/xl/16.1.1-1/xlC/16.1.1/bin
+OMP=/gpfs/wolf/gen124/world-shared/hpctoolkit/pkgs/ibm-lomp-ompt-tier3
+GCC=$(GCC_PATH)/xlc
+endif
+
+ifeq ($(V),6)
+V=6
+GCC_PATH=/sw/ascent/gcc/6.4.0/bin
+OLIB=$(LLVM_OMP)
+GCC=$(GCC_PATH)/gcc
+endif
+
+#------------------------------------------------------------------------------
+# provide paths for hpctoolkit and its GUIs
+#  gcc4: this version uses an old version of the LLVM gomp wrappers
+#  gcc5+: this version uses a new version of the LLVM gomp wrappers
+#------------------------------------------------------------------------------
+HPCT=/gpfs/wolf/gen124/world-shared/hpctoolkit/pkgs/hpctoolkit/bin
+VIEWERS=/gpfs/wolf/gen124/world-shared/hpctoolkit/pkgs/hpctoolkit-gui/bin
+
+
