@@ -1,16 +1,7 @@
 #include <omp.h>
 #include <stdio.h>
 
-#define N 40
-#define T 4
-
 #define ITERATIONS 100000000
-
-long
-fib(int n) {
-  if (n < 2) return n;
-  else return fib(n-1) + fib(n-2);
-}
 
 void
 loop0(){
@@ -60,7 +51,6 @@ p1()
 int
 main()
 {
-  omp_set_nested(1);
   p1();
   return 0;
 }
