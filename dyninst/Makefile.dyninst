@@ -25,6 +25,7 @@ MALLOC_LIBS=  -L$(MALLOC_DIR) -Wl,-rpath,$(MALLOC_DIR) \
 
 INCLUDES= \
 	$(BOOST_INCLUDE) \
+	$(TBB_INCLUDE) \
 	$(DYNINST_INCLUDE)
 
 LIBS= \
@@ -33,4 +34,4 @@ LIBS= \
 	$(MALLOC_LIBS)
 
 $(TARGET): $(TARGET).cpp
-	g++ -g $(PMODEL_OPT) -std=c++11 $(INCLUDES) -o $@ $< $(LIBS)
+	g++ -v -g $(PMODEL_OPT) -std=c++11 $(INCLUDES) -o $@ $< $(LIBS)

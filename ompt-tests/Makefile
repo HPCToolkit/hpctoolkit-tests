@@ -35,6 +35,10 @@ one:
 three:
 	$(MAKE) V=$(V) TEST=$@ G=$(G) any
 
+striped:
+	$(MAKE) V=$(V) TEST=$@ G=$(G) any
+
+
 looptest:
 	$(MAKE) V=$(V) TEST=$@ G=$(G) any
 

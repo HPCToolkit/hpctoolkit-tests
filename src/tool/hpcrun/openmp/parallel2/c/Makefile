@@ -11,7 +11,7 @@ OMPT_LIBPATH=/home/johnmc/pkgs-src/openmp/INSTALL/lib
 LDFLAGS +=-L$(OMPT_LIBPATH) -Wl,-rpath=$(OMPT_LIBPATH) -lomp 
 
 test: copenmp
-	$(H)/hpcrun -e REALTIME@1000 -t ./copenmp 
+	$(H)/hpcrun -e REALTIME@1000 -e OMP_IDLE -t ./copenmp 
 	$(H)/hpcstruct ./copenmp 
 	$(H)/hpcprof -S copenmp.hpcstruct hpctoolkit-copenmp-measurements
 	

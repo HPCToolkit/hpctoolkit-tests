@@ -9,7 +9,7 @@
 # set the compiler here
 #CC = mpicc
 #CC = /projects/pkgs/openmpi-3.0.1/bin/mpicc
-CC =/projects/pkgs/mpich-3.2/bin/mpicc
+CC = mpicc
 #CC = mpxlc
 
 # set compile flags here
@@ -42,12 +42,12 @@ INCLUDE_CFLAGS = $(OPT_FLAGS) $(OMP_FLAGS) \
 COMPILER_LFLAGS = -blpdata -lxlf90 -lxlopt -lxlsmp  -lm
 
 # LLVM OpenMP
-LLVM_OPENMP_LIBDIR=
+LLVM_OPENMP_LIBDIR=/home/johnmc/pkgs-src/openmp-5.0/openmp/openmp-install/lib
 OMPT= -Wl,-rpath=$(LLVM_OPENMP_LIBDIR) -L $(LLVM_OPENMP_LIBDIR) -lomp
 COMPILER_LDFLAGS = $(OMPT)
 
 # Default: none
-COMPILER_LDFLAGS = 
+#COMPILER_LDFLAGS = 
 
 LIB_LDFLAGS = $(COMPILER_LDFLAGS) -lm
 INCLUDE_LFLAGS = $(OPT_FLAGS) $(OMP_FLAGS) $(LIB_LDFLAGS)
