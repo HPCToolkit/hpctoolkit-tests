@@ -22,7 +22,7 @@ bar-pg.so: bar.c
 	gcc -shared -fPIC -pg -o bar-pg.so bar.c
 	
 clean:
-	/bin/rm -rf bar.so bar.o fib-* bar-* hpctoolkit-* *.hpcstruct
+	/bin/rm -rf gmon.out bar.so bar.o fib-* bar-* hpctoolkit-* *.hpcstruct
 
 dbclean:
 	/bin/rm -rf hpctoolkit-*
@@ -31,7 +31,7 @@ dbclean:
 	hpcstruct %
 
 run: fib-bar fib-pg-bar fib-pg-bar-pg fib-bar-pg
-	-hpcrun  ./fib-bar
-	-hpcrun  ./fib-pg-bar
-	-hpcrun  ./fib-pg-bar-pg
-	-hpcrun  ./fib-bar-pg
+	-hpcrun ./fib-bar
+	-hpcrun ./fib-pg-bar
+	-hpcrun ./fib-pg-bar-pg
+	-hpcrun ./fib-bar-pg
