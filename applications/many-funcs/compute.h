@@ -1,4 +1,4 @@
 #include "macros.h"
 
-// call all functions
-ALL(CF,g)
+// call many functions
+MANY(CF,g)

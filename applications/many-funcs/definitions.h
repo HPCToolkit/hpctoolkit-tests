@@ -1,4 +1,4 @@
 #include "macros.h"
 
-// define all functions
-ALL(DF,g)
+// define many functions
+MANY(DF,g)
