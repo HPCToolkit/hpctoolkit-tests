@@ -1,0 +1,4 @@
+This unit test has an executable that will dlopen a shared library.
+The executable is compiled with RUNPATH points the directory that
+contains the shared library. This unit test checks whether hpcrun
+will interfere with dlopen or not.
