@@ -1,7 +1,13 @@
+#ifdef ONE_SECTION
+#define NEW_SECTION(f)
+#else
+#define NEW_SECTION(f) void f() __attribute__((section(("s" # f)))); 
+#endif
+
 #define apply(x) x
 
 #define CF(f) @f ();
-#define DF(f) @void f() __attribute__((section(("s" # f)))); void f () { return; }
+#define DF(f) @NEW_SECTION(f) void f () { return; }
 
 #define F2(F, f) apply(F(f ## 0)) apply(F(f ##1))
 #define F8(F, f) F2(F, f ## 00) F2(F, f ## 01) F2(F, f ## 10) F2(F, f ## 11)
