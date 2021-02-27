@@ -25,7 +25,11 @@ vecadd_kernel(int *C, const int *A, const int *B, int n) {
     if (i < n) C[i] = A[i] + B[i];
 }
 
-int vecadd() {
+
+int vecadd(int device) {
+
+    if (device > 0) CUDA_CALL(cudaSetDevice(device), "failed to set CUDA device");
+
     int n = 10000;
     size_t size = n * sizeof(int);
 
