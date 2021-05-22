@@ -7,6 +7,7 @@ def getParameters():
      parser.add_argument("--filelist", type=str, help="a list of binary for benchmarking", required=True)
      parser.add_argument("--rep", type=int, default=5, help="the number of iterations to run on each binary")
      parser.add_argument("--thread", type=int, default=16, help="the number of threads")
+     parser.add_argument("--start", type=int, default=1, help="From which line of the input file to test")
      args = parser.parse_args()
      return args
 
@@ -31,7 +32,9 @@ if args.filelist != None:
 else:
     bins = [args.binpath]
 
-for filepath in bins:
-    print ("Experiment for", filepath)
+cnt = args.start
+for filepath in bins[args.start-1:]:
+    print (cnt, filepath)
+    cnt += 1
     for i in range(args.rep):
         Run(filepath, args.thread, i)
