@@ -1,4 +1,4 @@
-This directory contains two python scripts to test hpcstruct.
+This directory contains two python scripts to test hpcstruct. python3 is recommended.
 
 # collect.py
 This script takes a directory as input and outputs all binaries inside the input directory to a output file. For example, running
