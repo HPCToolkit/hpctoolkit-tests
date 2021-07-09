@@ -87,6 +87,8 @@
 #include <vector>
 #include <mutex>
 
+#include <libdw.h>
+
 #include <CFG.h>
 #include <CodeObject.h>
 #include <CodeSource.h>
@@ -99,6 +101,15 @@
 #include "Fatbin.hpp"
 #include "InputFile.hpp"
 #include "RelocateCubin.hpp"
+#include "CudaCFGFactory.hpp"
+#include "CudaFunction.hpp"
+#include "CudaBlock.hpp"
+#include "CudaCodeSource.hpp"
+#include "CFGParser.hpp"
+#include "GraphReader.hpp"
+#include "Line.hpp"
+#include "ReadCubinLineMap.hpp"
+#include "LineMapping.hpp"
 
 #define MAX_VMA  0xfffffffffffffff0
 
@@ -199,6 +210,7 @@ doInstruction(Offset addr, FuncInfo & finfo)
 
 	if (! svec.empty()) {
 	    int line = svec[0]->getLine();
+      std::cout << line << std::endl;
 
 	    // line = 0 means unknown
 	    if (line > 0) {
@@ -251,13 +263,14 @@ doBlock(Block * block, BlockSet & visited, FuncInfo & finfo)
 
     // split basic block into instructions (optional)
     if (opts.do_instns) {
- 	Dyninst::ParseAPI::Block::Insns imap;
-	block->getInsns(imap);
+      Dyninst::ParseAPI::Block::Insns imap;
+      block->getInsns(imap);
 
-	for (auto iit = imap.begin(); iit != imap.end(); ++iit) {
-	    Offset addr = iit->first;
-	    doInstruction(addr, finfo);
-	}
+      for (auto iit = imap.begin(); iit != imap.end(); ++iit) {
+          Offset addr = iit->first;
+          std::cout << "Line mapping: " << addr << "->";
+          doInstruction(addr, finfo);
+      }
     }
 }
 
@@ -493,6 +506,60 @@ printTime(const char *label, struct timeval *tv_prev, struct timeval *tv_now,
 
 //----------------------------------------------------------------------
 
+bool
+dumpRelocatedCubin(const std::string &relocated_cubin, char *elf_addr, size_t elf_len) {
+    int fd = open(relocated_cubin.c_str(), O_CREAT|O_WRONLY|O_TRUNC, S_IRWXU);
+    if (write(fd, elf_addr, elf_len) != elf_len) {
+        return false;
+    }
+    close(fd);
+    return true;
+}
+
+//----------------------------------------------------------------------
+
+bool
+dumpRelocatedDot(const std::string &filename, const std::string &relocated_dot) {
+    std::string cmd = "nvdisasm -cfg -poff " + filename + " > " + relocated_dot;
+    FILE *output = popen(cmd.c_str(), "r");
+    if (!output) {
+      cout << "Dump " << relocated_dot << " to disk failed" << endl; 
+      return false;
+    }
+    pclose(output);
+    return true;
+}
+
+
+void
+parseDotCFG(const std::string &filename, std::vector<CudaParse::Function *> &functions) {
+    std::string relocated_dot = filename + ".dot";
+    CudaParse::GraphReader graph_reader(relocated_dot);
+    CudaParse::Graph graph;
+    graph_reader.read(graph);
+    CudaParse::CFGParser cfg_parser;
+    cfg_parser.parse(graph, functions);
+}
+
+
+void
+relocateInstructions(std::vector<CudaParse::Function *> &functions) {
+  std::vector<Symbol *> symbols;
+  the_symtab->getAllSymbols(symbols);
+  for (auto *symbol : symbols) {
+    for (auto *function : functions) {
+      if (function->name == symbol->getMangledName()) {
+        for (auto *block : function->blocks) {
+          for (auto *inst : block->insts) {
+            inst->offset += symbol->getOffset();
+          }
+        }
+      }
+    }
+  }
+}
+
+
 int
 main(int argc, char **argv)
 {
@@ -546,30 +613,62 @@ main(int argc, char **argv)
 	}
 	bool cuda_file = (the_symtab->getArchitecture() == Dyninst::Arch_cuda);
 
-	the_symtab->parseTypesNow();
-	the_symtab->parseFunctionRanges();
-
-	vector <Module *> modVec;
-	the_symtab->getAllModules(modVec);
-
-	for (auto mit = modVec.begin(); mit != modVec.end(); ++mit) {
-	    (*mit)->parseLineInformation();
-	}
+  the_symtab->parseTypesNow();
+  the_symtab->parseFunctionRanges();
 
 	gettimeofday(&tv_symtab, NULL);
 	getrusage(RUSAGE_SELF, &ru_symtab);
 
-	SymtabCodeSource * code_src = NULL;
+	CodeSource * code_src = NULL;
 	CodeObject * code_obj = NULL;
+  CFGFactory * cfg_fact = NULL;
 
 	if (cuda_file) {
-	    //
-	    // FIXME: write a replacement for CodeObject and parse()
-	    //
-	    cout << "\nskip cuda:  " << elf_name << endl;
-	    continue;
+      std::string relocated_dot = filename + ".dot";
+      std::string relocated_cubin = filename + ".relocated";
+
+      if (!dumpRelocatedCubin(relocated_cubin, elf_addr, elf_len)) {
+          cout << "Write " + relocated_cubin + " to disk failed" << endl; 
+          continue;
+      }
+
+      if (!dumpRelocatedDot(filename, relocated_dot)) {
+          cout << "Write " + relocated_dot + " to disk failed" << endl; 
+          continue;
+      }
+
+      // Parse dot cfg
+      std::vector<CudaParse::Function *> functions;
+      parseDotCFG(filename, functions);
+
+      // relocate instructions
+      relocateInstructions(functions);
+
+      LineMapping line_mapping;
+
+      if (line_mapping.read_lines(relocated_cubin)) {
+        if (!line_mapping.insert_lines(the_symtab)) {
+          cout << "Insert " + relocated_cubin + " line_mapping failed" << endl; 
+          continue;
+        }
+      }
+
+      // Record line-mapping
+
+      cfg_fact = new CudaCFGFactory(functions);
+      code_src = new CudaCodeSource(functions); 
+      code_obj = new CodeObject(code_src, cfg_fact);
+      code_obj->parse();
+      for (auto *function : functions) {
+        delete function;
+      }
 	}
 	else {
+      vector <Module *> modVec;
+      the_symtab->getAllModules(modVec);
+      for (auto mit = modVec.begin(); mit != modVec.end(); ++mit) {
+        (*mit)->parseLineInformation();
+      }
 	    code_src = new SymtabCodeSource(the_symtab);
 	    code_obj = new CodeObject(code_src);
 	    code_obj->parse();
@@ -613,12 +712,20 @@ main(int argc, char **argv)
 	printTime("parse: ", &tv_symtab, &tv_parse, &ru_symtab, &ru_parse);
 	printTime("total: ", &tv_init, &tv_fini, &ru_init, &ru_fini);
 
+  if (cfg_fact != NULL) {
+      delete cfg_fact;
+  }
 	if (code_obj != NULL) {
 	    delete code_obj;
 	}
 	if (code_src != NULL) {
-	    delete code_src;
+      if (cuda_file == true) {
+          delete (CudaCodeSource *)code_src;
+      } else {
+          delete (SymtabCodeSource *)code_src;
+      }
 	}
+
 	Symtab::closeSymtab(the_symtab);
     }
 
