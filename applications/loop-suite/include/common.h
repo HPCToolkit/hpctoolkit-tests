@@ -7,13 +7,17 @@
 
 #define N (1L << 30)
 
+#ifdef MPI
+void test_mpi(int world_size, int world_rank, long n);
+#else
+void test(long n);
+#endif
+
 void loop(long n)
 {
    volatile long i;
    for(i = 0; i < n; i++);
 }
-
-void test(long n);
 
 long parse(int argc, char **argv)
 {
@@ -47,7 +51,7 @@ int main(int argc, char **argv)
    long n = parse(argc, argv);
 
 #ifdef MPI
-   test_mpi(world_size, workd_rank, n);
+   test_mpi(world_size, world_rank, n);
 #else
    test(n);
 #endif
