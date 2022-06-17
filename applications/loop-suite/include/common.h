@@ -13,9 +13,11 @@ void loop(long n)
    for(i = 0; i < n; i++);
 }
 
-void test(long n);
+
 #ifdef MPI
 void test_mpi(int world_size, int world_rank, long n);
+#else
+void test(long n);
 #endif
 
 
