@@ -14,6 +14,10 @@ void loop(long n)
 }
 
 void test(long n);
+#ifdef MPI
+void test_mpi(int world_size, int world_rank, long n);
+#endif
+
 
 long parse(int argc, char **argv)
 {
@@ -47,7 +51,7 @@ int main(int argc, char **argv)
    long n = parse(argc, argv);
 
 #ifdef MPI
-   test_mpi(world_size, workd_rank, n);
+   test_mpi(world_size, world_rank, n);
 #else
    test(n);
 #endif

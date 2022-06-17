@@ -3,7 +3,7 @@ $(TARGET).d: $(TARGET).m
 	hpcprof -o $@ $<
 
 $(TARGET).m: $(TARGET)
-	hpcrun $(MEASUREMENT_ARGS) -o $@ ./$<
+	${LAUNCHER} hpcrun $(MEASUREMENT_ARGS) -o $@ ./$<
 
 $(TARGET): $(TARGET).c
 	$(COMPILER) $(COMPILER_ARGS) -o $@ $<
