@@ -7,19 +7,17 @@
 
 #define N (1L << 30)
 
-void loop(long n)
-{
-   volatile long i;
-   for(i = 0; i < n; i++);
-}
-
-
 #ifdef MPI
 void test_mpi(int world_size, int world_rank, long n);
 #else
 void test(long n);
 #endif
 
+void loop(long n)
+{
+   volatile long i;
+   for(i = 0; i < n; i++);
+}
 
 long parse(int argc, char **argv)
 {
