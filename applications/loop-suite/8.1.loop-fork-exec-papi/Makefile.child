@@ -1,0 +1,8 @@
+TARGET=child
+
+COMPILER=gcc
+COMPILER_ARGS=-g -O2
+
+all: $(TARGET)
+
+include ../include/Makefile
